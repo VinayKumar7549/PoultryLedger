@@ -17,6 +17,7 @@ export function RouteScreen({
   navigate,
   onBack,
   onSaveRouteCustomers,
+  onDeleteCustomer,
 }: {
   routeId: string
   customers: Record<string, Customer>
@@ -24,6 +25,7 @@ export function RouteScreen({
   navigate: (s: Screen, r?: string, c?: string) => void
   onBack: () => void
   onSaveRouteCustomers: (routeId: string, ids: string[]) => void
+  onDeleteCustomer?: (id: string) => void
 }) {
   const routeTitle = ROUTE_NAMES[routeId] || 'Route'
   const currentList = routeCustomers.map(id => customers[id]).filter(Boolean)
@@ -44,7 +46,11 @@ export function RouteScreen({
 
   const confirmDeleteCustomer = () => {
     if (customerToDelete) {
-      handleRemoveCustomer(customerToDelete.id)
+      if (onDeleteCustomer) {
+        onDeleteCustomer(customerToDelete.id)
+      } else {
+        handleRemoveCustomer(customerToDelete.id)
+      }
       setCustomerToDelete(null)
     }
   }

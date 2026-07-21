@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Screen, Customer, Expense, EggPurchase, Transaction } from './types'
 import { today } from './utils/date'
 import {
-  INITIAL_CUSTOMERS,
   INITIAL_EXPENSES,
   INITIAL_PURCHASES,
-  INITIAL_ROUTE_CUSTOMERS,
 } from './data/seedData'
+import { customerService } from './services/customerService'
 import { StatusBar } from './components/common/StatusBar'
 import { SideMenu } from './components/layout/SideMenu'
 import { HomeScreen } from './pages/HomeScreen'
@@ -22,13 +21,20 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [selectedRouteId, setSelectedRouteId] = useState<string>('r1')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('c1')
-  const [customers, setCustomers] = useState<Record<string, Customer>>(INITIAL_CUSTOMERS)
-  const [routeCustomerMap, setRouteCustomerMap] = useState<Record<string, string[]>>(INITIAL_ROUTE_CUSTOMERS)
+  const [customers, setCustomers] = useState<Record<string, Customer>>({})
+  const [routeCustomerMap, setRouteCustomerMap] = useState<Record<string, string[]>>({})
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES)
   const [purchases, setPurchases] = useState<EggPurchase[]>(INITIAL_PURCHASES)
   const [historyDate, setHistoryDate] = useState<string>(today)
   const [expenseDate, setExpenseDate] = useState<string>(today)
   const [showMenu, setShowMenu] = useState<boolean>(false)
+
+  useEffect(() => {
+    customerService.loadCustomersAndRoutes().then(res => {
+      setCustomers(res.customers)
+      setRouteCustomerMap(res.routeCustomerMap)
+    })
+  }, [])
 
   const navigate = (s: Screen, rId?: string, cId?: string) => {
     setScreen(s)
@@ -36,19 +42,23 @@ export default function App() {
     if (cId) setSelectedCustomerId(cId)
   }
 
-  const handleSaveTransaction = (tx: Transaction, updatedOutstanding: number) => {
-    setCustomers(prev => ({
-      ...prev,
-      [tx.customerId]: {
-        ...prev[tx.customerId],
-        outstandingCredit: updatedOutstanding,
-        transactions: [...prev[tx.customerId].transactions, tx],
-      },
-    }))
+  const handleSaveTransaction = async (tx: Transaction, updatedOutstanding: number) => {
+    customerService.attachTransaction(tx.customerId, tx)
+    const res = await customerService.updateCustomerCredit(tx.customerId, updatedOutstanding)
+    setCustomers(res.customers)
+    setRouteCustomerMap(res.routeCustomerMap)
   }
 
-  const handleSaveRouteCustomers = (rId: string, ids: string[]) => {
-    setRouteCustomerMap(prev => ({ ...prev, [rId]: ids }))
+  const handleSaveRouteCustomers = async (rId: string, ids: string[]) => {
+    const res = await customerService.saveRouteCustomers(rId, ids)
+    setCustomers(res.customers)
+    setRouteCustomerMap(res.routeCustomerMap)
+  }
+
+  const handleDeleteCustomer = async (id: string) => {
+    const res = await customerService.deleteCustomer(id)
+    setCustomers(res.customers)
+    setRouteCustomerMap(res.routeCustomerMap)
   }
 
   const handleSaveExpense = (expense: Expense) => {
@@ -124,6 +134,7 @@ export default function App() {
                   navigate={navigate}
                   onBack={() => setScreen('home')}
                   onSaveRouteCustomers={handleSaveRouteCustomers}
+                  onDeleteCustomer={handleDeleteCustomer}
                 />
               )}
               {screen === 'transaction' && selectedCustomer && (

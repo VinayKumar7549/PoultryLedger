@@ -23,39 +23,39 @@ export const INITIAL_CUSTOMERS: Record<string, Customer> = {
     id: 'c1', name: 'Alice Fernando', subtitle: 'Shop Owner', routeId: 'r1',
     outstandingCredit: 450,
     transactions: [
-      { id: 't1a', customerId: 'c1', date: twoDaysAgo, time: '09:15 AM', trays: 50, amountToBePaid: 500, amountPaid: 500, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 0 },
-      { id: 't1b', customerId: 'c1', date: yesterday, time: '09:10 AM', trays: 40, amountToBePaid: 400, amountPaid: 0, paymentMethod: 'cash', creditKeptToday: 400, creditChange: -400 },
-      { id: 't1c', customerId: 'c1', date: today, time: '08:55 AM', trays: 50, amountToBePaid: 500, amountPaid: 550, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 50 },
+      { id: 't1a', customerId: 'c1', date: twoDaysAgo, time: '09:15 AM', trays: 50 / 30, amountToBePaid: 500, amountPaid: 500, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 0 },
+      { id: 't1b', customerId: 'c1', date: yesterday, time: '09:10 AM', trays: 40 / 30, amountToBePaid: 400, amountPaid: 0, paymentMethod: 'cash', creditKeptToday: 400, creditChange: -400 },
+      { id: 't1c', customerId: 'c1', date: today, time: '08:55 AM', trays: 50 / 30, amountToBePaid: 500, amountPaid: 550, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 50 },
     ],
   },
   c2: {
     id: 'c2', name: 'Raj Patel', subtitle: 'Hotel & Restaurant', routeId: 'r1',
     outstandingCredit: 0,
     transactions: [
-      { id: 't2a', customerId: 'c2', date: yesterday, time: '10:05 AM', trays: 100, amountToBePaid: 1000, amountPaid: 1000, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
-      { id: 't2b', customerId: 'c2', date: today, time: '09:40 AM', trays: 120, amountToBePaid: 1200, amountPaid: 1200, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
+      { id: 't2a', customerId: 'c2', date: yesterday, time: '10:05 AM', trays: 100 / 30, amountToBePaid: 1000, amountPaid: 1000, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
+      { id: 't2b', customerId: 'c2', date: today, time: '09:40 AM', trays: 120 / 30, amountToBePaid: 1200, amountPaid: 1200, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
     ],
   },
   c3: {
     id: 'c3', name: 'Meera Nair', subtitle: 'Office Canteen', routeId: 'r1',
     outstandingCredit: 150,
     transactions: [
-      { id: 't3a', customerId: 'c3', date: twoDaysAgo, time: '11:00 AM', trays: 30, amountToBePaid: 300, amountPaid: 150, paymentMethod: 'cash', creditKeptToday: 150, creditChange: -150 },
+      { id: 't3a', customerId: 'c3', date: twoDaysAgo, time: '11:00 AM', trays: 30 / 30, amountToBePaid: 300, amountPaid: 150, paymentMethod: 'cash', creditKeptToday: 150, creditChange: -150 },
     ],
   },
   c4: {
     id: 'c4', name: 'Joseph Thomas', subtitle: 'Sunrise Bakery', routeId: 'r1',
     outstandingCredit: 800,
     transactions: [
-      { id: 't4a', customerId: 'c4', date: yesterday, time: '11:30 AM', trays: 80, amountToBePaid: 800, amountPaid: 400, paymentMethod: 'cash', creditKeptToday: 400, creditChange: -400 },
-      { id: 't4b', customerId: 'c4', date: today, time: '10:55 AM', trays: 80, amountToBePaid: 800, amountPaid: 800, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 0 },
+      { id: 't4a', customerId: 'c4', date: yesterday, time: '11:30 AM', trays: 80 / 30, amountToBePaid: 800, amountPaid: 400, paymentMethod: 'cash', creditKeptToday: 400, creditChange: -400 },
+      { id: 't4b', customerId: 'c4', date: today, time: '10:55 AM', trays: 80 / 30, amountToBePaid: 800, amountPaid: 800, paymentMethod: 'cash', creditKeptToday: 0, creditChange: 0 },
     ],
   },
   c5: {
     id: 'c5', name: 'Sunita Devi', subtitle: 'Mess & Tiffin', routeId: 'r1',
     outstandingCredit: 0,
     transactions: [
-      { id: 't5a', customerId: 'c5', date: today, time: '11:20 AM', trays: 60, amountToBePaid: 600, amountPaid: 600, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
+      { id: 't5a', customerId: 'c5', date: today, time: '11:20 AM', trays: 60 / 30, amountToBePaid: 600, amountPaid: 600, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
     ],
   },
   c6: {
@@ -91,8 +91,8 @@ export const INITIAL_CUSTOMERS: Record<string, Customer> = {
     id: 'c10', name: 'Anjali Singh', subtitle: 'School Canteen', routeId: 'r2',
     outstandingCredit: 1200,
     transactions: [
-      { id: 't10a', customerId: 'c10', date: twoDaysAgo, time: '03:00 PM', trays: 150, amountToBePaid: 1500, amountPaid: 300, paymentMethod: 'cash', creditKeptToday: 1200, creditChange: -1200 },
-      { id: 't10b', customerId: 'c10', date: yesterday, time: '03:45 PM', trays: 120, amountToBePaid: 1200, amountPaid: 1200, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
+      { id: 't10a', customerId: 'c10', date: twoDaysAgo, time: '03:00 PM', trays: 150 / 30, amountToBePaid: 1500, amountPaid: 300, paymentMethod: 'cash', creditKeptToday: 1200, creditChange: -1200 },
+      { id: 't10b', customerId: 'c10', date: yesterday, time: '03:45 PM', trays: 120 / 30, amountToBePaid: 1200, amountPaid: 1200, paymentMethod: 'gpay', creditKeptToday: 0, creditChange: 0 },
     ],
   },
 }

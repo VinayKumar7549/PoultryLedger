@@ -15,16 +15,40 @@ export const calculateInventoryMetrics = (
   const safePurchases = purchases || []
   const safeCustomers = customers || {}
 
-  const totalEggsPurchased = safePurchases.reduce((sum, p) => sum + (p.totalEggs || 0), 0)
-  const totalEggsSold = Object.values(safeCustomers).reduce((sum, c) => {
-    return sum + (c.transactions || []).reduce((tSum, t) => tSum + (t.trays || 0) * 30, 0)
+  // Total Eggs Purchased = Sum of all purchase records (Number of Trays × 30)
+  const totalEggsPurchased = safePurchases.reduce((sum, p) => {
+    const trays = Number(p?.trays) || 0
+    return sum + (trays * 30)
   }, 0)
 
-  const remainingEggs = Math.max(0, totalEggsPurchased - totalEggsSold)
-  const remainingTrays = remainingEggs / 30
+  // Total Eggs Sold = Sum of Number of Eggs sold in every transaction
+  const totalEggsSold = Object.values(safeCustomers).reduce((sum, c) => {
+    const custTx = c?.transactions || []
+    return sum + custTx.reduce((tSum, t) => {
+      const trays = Number(t?.trays) || 0
+      return tSum + Math.round(trays * 30)
+    }, 0)
+  }, 0)
 
-  const todayPurchasesList = safePurchases.filter(p => p.date === today)
-  const todayPurchaseCost = todayPurchasesList.reduce((sum, p) => sum + (p.totalAmount || 0), 0)
+  // Initial State: If there are no purchases yet: Remaining Eggs = 0, Remaining Trays = 0
+  let remainingEggs = 0
+  let remainingTrays = 0
+
+  if (safePurchases.length > 0) {
+    remainingEggs = totalEggsPurchased - totalEggsSold
+    remainingTrays = remainingEggs / 30
+  }
+
+  // Safety checks to prevent NaN or undefined values
+  if (isNaN(remainingEggs) || remainingEggs === undefined || remainingEggs === null) {
+    remainingEggs = 0
+  }
+  if (isNaN(remainingTrays) || remainingTrays === undefined || remainingTrays === null) {
+    remainingTrays = 0
+  }
+
+  const todayPurchasesList = safePurchases.filter(p => p?.date === today)
+  const todayPurchaseCost = todayPurchasesList.reduce((sum, p) => sum + (Number(p?.totalAmount) || 0), 0)
   const todayPurchasesCount = todayPurchasesList.length
 
   return {
