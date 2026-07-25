@@ -1,69 +1,50 @@
 import { Customer } from '../types'
-import { customerRepository, routeRepository, CustomerEntity } from '../database'
-import { INITIAL_CUSTOMERS, INITIAL_ROUTE_CUSTOMERS } from '../data/seedData'
-import { dbInstance } from '../database/database'
+import { customerRepository } from '../database'
 import { uid } from '../utils/date'
+import { transactionService } from './transactionService'
 
 class CustomerService {
-  private customerTransactionsCache: Record<string, any[]> = {}
-
-  async loadCustomersAndRoutes(): Promise<{
-    customers: Record<string, Customer>
-    routeCustomerMap: Record<string, string[]>
-  }> {
-    await dbInstance.initDatabase()
-
-    // Seed initial routes if none exist
-    const existingRoutes = await routeRepository.getAll()
-    if (existingRoutes.length === 0) {
-      await routeRepository.create({ id: 'r1', name: 'Route 1' })
-      await routeRepository.create({ id: 'r2', name: 'Route 2' })
-    }
-
-    // Seed initial customers if none exist
-    const existingCustomers = await customerRepository.getAll()
-    if (existingCustomers.length === 0) {
-      for (const [id, c] of Object.entries(INITIAL_CUSTOMERS)) {
-        await customerRepository.create({
-          id,
-          name: c.name,
-          subtitle: c.subtitle,
-          route_id: c.routeId,
-          outstanding_credit: c.outstandingCredit,
-        })
-        this.customerTransactionsCache[id] = c.transactions || []
-      }
-    }
-
-    return await this.fetchCustomersAndRoutes()
-  }
-
   async fetchCustomersAndRoutes(): Promise<{
     customers: Record<string, Customer>
     routeCustomerMap: Record<string, string[]>
   }> {
     const customerEntities = await customerRepository.getAll()
+    const allTransactions = await transactionService.getAllTransactions()
+
+    const txByCustomer: Record<string, typeof allTransactions> = {}
+    for (const tx of allTransactions) {
+      if (!txByCustomer[tx.customerId]) {
+        txByCustomer[tx.customerId] = []
+      }
+      txByCustomer[tx.customerId].push(tx)
+    }
 
     const customersMap: Record<string, Customer> = {}
-    const routeCustomerMap: Record<string, string[]> = { r1: [], r2: [] }
+    const routeCustomerMap: Record<string, string[]> = {}
 
     for (const entity of customerEntities) {
-      const initialTx = INITIAL_CUSTOMERS[entity.id]?.transactions || []
-      const cachedTx = this.customerTransactionsCache[entity.id] || initialTx
+      const custTx = txByCustomer[entity.id] || []
+      const rId = entity.route_id || ''
+      const openingCredit = Number(entity.opening_credit) || 0
+
+      const totalSales = custTx.reduce((sum, t) => sum + (t.amountToBePaid || 0), 0)
+      const totalPayments = custTx.reduce((sum, t) => sum + (t.amountPaid || 0), 0)
+      const calculatedOutstanding = openingCredit + totalSales - totalPayments
 
       customersMap[entity.id] = {
         id: entity.id,
         name: entity.name,
         subtitle: entity.subtitle || '',
-        routeId: entity.route_id,
-        outstandingCredit: entity.outstanding_credit,
-        transactions: cachedTx,
+        routeId: rId,
+        openingCredit,
+        outstandingCredit: calculatedOutstanding,
+        transactions: custTx,
       }
 
-      if (!routeCustomerMap[entity.route_id]) {
-        routeCustomerMap[entity.route_id] = []
+      if (!routeCustomerMap[rId]) {
+        routeCustomerMap[rId] = []
       }
-      routeCustomerMap[entity.route_id].push(entity.id)
+      routeCustomerMap[rId].push(entity.id)
     }
 
     return { customers: customersMap, routeCustomerMap }
@@ -74,17 +55,20 @@ class CustomerService {
     name: string
     subtitle?: string
     routeId: string
+    openingCredit?: number
     outstandingCredit?: number
   }): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
     const newId = data.id || 'c' + uid()
+    const opening = data.openingCredit || 0
+    const outstanding = data.outstandingCredit !== undefined ? data.outstandingCredit : opening
     await customerRepository.create({
       id: newId,
       name: data.name,
       subtitle: data.subtitle || '',
       route_id: data.routeId,
-      outstanding_credit: data.outstandingCredit || 0,
+      opening_credit: opening,
+      outstanding_credit: outstanding,
     })
-    this.customerTransactionsCache[newId] = []
     return await this.fetchCustomersAndRoutes()
   }
 
@@ -92,11 +76,21 @@ class CustomerService {
     id: string,
     fields: Partial<Customer>
   ): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
+    const existing = await customerRepository.getById(id)
+    if (!existing) return await this.fetchCustomersAndRoutes()
+
+    const newOpeningCredit = fields.openingCredit !== undefined ? fields.openingCredit : (existing.opening_credit || 0)
+    const txs = await transactionService.getByCustomerId(id)
+    const totalSales = txs.reduce((sum, t) => sum + (t.amountToBePaid || 0), 0)
+    const totalPayments = txs.reduce((sum, t) => sum + (t.amountPaid || 0), 0)
+    const calculatedOutstanding = newOpeningCredit + totalSales - totalPayments
+
     await customerRepository.update(id, {
       name: fields.name,
       subtitle: fields.subtitle,
       route_id: fields.routeId,
-      outstanding_credit: fields.outstandingCredit,
+      opening_credit: newOpeningCredit,
+      outstanding_credit: calculatedOutstanding,
     })
     return await this.fetchCustomersAndRoutes()
   }
@@ -115,7 +109,6 @@ class CustomerService {
     id: string
   ): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
     await customerRepository.delete(id)
-    delete this.customerTransactionsCache[id]
     return await this.fetchCustomersAndRoutes()
   }
 
@@ -124,6 +117,7 @@ class CustomerService {
     customerIds: string[]
   ): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
     const allCustomers = await customerRepository.getAll()
+
     for (const cust of allCustomers) {
       if (customerIds.includes(cust.id)) {
         if (cust.route_id !== routeId) {
@@ -134,12 +128,12 @@ class CustomerService {
     return await this.fetchCustomersAndRoutes()
   }
 
-  attachTransaction(customerId: string, tx: any) {
-    if (!this.customerTransactionsCache[customerId]) {
-      const initialTx = INITIAL_CUSTOMERS[customerId]?.transactions || []
-      this.customerTransactionsCache[customerId] = [...initialTx]
-    }
-    this.customerTransactionsCache[customerId].push(tx)
+  async assignCustomerToRoute(
+    customerId: string,
+    routeId: string
+  ): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
+    await customerRepository.update(customerId, { route_id: routeId })
+    return await this.fetchCustomersAndRoutes()
   }
 }
 

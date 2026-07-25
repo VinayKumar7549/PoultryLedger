@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Customer, PaymentMethod, Transaction } from '../types'
+import { Customer, PaymentMethod, Transaction, TransactionType } from '../types'
 import { today, getTime, uid } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { IconBack } from '../components/common/Icons'
@@ -13,38 +13,163 @@ export function TransactionScreen({
   onBack: () => void
   onSave: (tx: Transaction, updatedOutstanding: number) => void
 }) {
+  const [txType, setTxType] = useState<TransactionType>('sale')
   const [numEggs, setNumEggs] = useState('')
   const [ratePer100, setRatePer100] = useState('')
+  const [totalAmount, setTotalAmount] = useState('')
   const [amountPaid, setAmountPaid] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [notes, setNotes] = useState('')
   const [savedMsg, setSavedMsg] = useState('')
 
-  const eggsCount = parseInt(numEggs) || 0
+  const [lastEdited, setLastEdited] = useState<'eggs' | 'rate' | 'total'>('eggs')
+  const [secondLastEdited, setSecondLastEdited] = useState<'eggs' | 'rate' | 'total'>('rate')
+
+  const eggsCount = parseFloat(numEggs) || 0
   const rate = parseFloat(ratePer100) || 0
-  const calculatedAmount = (eggsCount * rate) / 100
+  const calculatedAmount = parseFloat(totalAmount) || (eggsCount * rate) / 100
   const paid = parseFloat(amountPaid) || 0
 
-  const creditKeptToday = Math.max(0, calculatedAmount - paid)
-  const creditReducedToday = Math.max(0, paid - calculatedAmount)
+  const handleEggsChange = (val: string) => {
+    setNumEggs(val)
+    const eggs = parseFloat(val) || 0
+    const currentRate = parseFloat(ratePer100) || 0
+    const currentTotal = parseFloat(totalAmount) || 0
+
+    let prevLast = lastEdited
+    let prevSecond = secondLastEdited
+    if (prevLast !== 'eggs') {
+      prevSecond = prevLast
+      prevLast = 'eggs'
+      setLastEdited('eggs')
+      setSecondLastEdited(prevSecond)
+    }
+
+    if (eggs <= 0) return
+
+    const partner = prevSecond
+    if (partner === 'rate' && currentRate > 0) {
+      const calcTotal = (eggs * currentRate) / 100
+      setTotalAmount(calcTotal > 0 ? String(Number(calcTotal.toFixed(2))) : '')
+    } else if (partner === 'total' && currentTotal > 0) {
+      const calcRate = (currentTotal * 100) / eggs
+      setRatePer100(calcRate > 0 ? String(Number(calcRate.toFixed(2))) : '')
+    } else if (currentRate > 0) {
+      const calcTotal = (eggs * currentRate) / 100
+      setTotalAmount(calcTotal > 0 ? String(Number(calcTotal.toFixed(2))) : '')
+    } else if (currentTotal > 0) {
+      const calcRate = (currentTotal * 100) / eggs
+      setRatePer100(calcRate > 0 ? String(Number(calcRate.toFixed(2))) : '')
+    }
+  }
+
+  const handleRateChange = (val: string) => {
+    setRatePer100(val)
+    const eggs = parseFloat(numEggs) || 0
+    const currentRate = parseFloat(val) || 0
+    const currentTotal = parseFloat(totalAmount) || 0
+
+    let prevLast = lastEdited
+    let prevSecond = secondLastEdited
+    if (prevLast !== 'rate') {
+      prevSecond = prevLast
+      prevLast = 'rate'
+      setLastEdited('rate')
+      setSecondLastEdited(prevSecond)
+    }
+
+    if (currentRate <= 0) return
+
+    const partner = prevSecond
+    if (partner === 'eggs' && eggs > 0) {
+      const calcTotal = (eggs * currentRate) / 100
+      setTotalAmount(calcTotal > 0 ? String(Number(calcTotal.toFixed(2))) : '')
+    } else if (partner === 'total' && currentTotal > 0) {
+      const calcEggs = (currentTotal * 100) / currentRate
+      setNumEggs(calcEggs > 0 ? String(Number(calcEggs.toFixed(2))) : '')
+    } else if (eggs > 0) {
+      const calcTotal = (eggs * currentRate) / 100
+      setTotalAmount(calcTotal > 0 ? String(Number(calcTotal.toFixed(2))) : '')
+    } else if (currentTotal > 0) {
+      const calcEggs = (currentTotal * 100) / currentRate
+      setNumEggs(calcEggs > 0 ? String(Number(calcEggs.toFixed(2))) : '')
+    }
+  }
+
+  const handleTotalChange = (val: string) => {
+    setTotalAmount(val)
+    const eggs = parseFloat(numEggs) || 0
+    const currentRate = parseFloat(ratePer100) || 0
+    const currentTotal = parseFloat(val) || 0
+
+    let prevLast = lastEdited
+    let prevSecond = secondLastEdited
+    if (prevLast !== 'total') {
+      prevSecond = prevLast
+      prevLast = 'total'
+      setLastEdited('total')
+      setSecondLastEdited(prevSecond)
+    }
+
+    if (currentTotal <= 0) return
+
+    const partner = prevSecond
+    if (partner === 'eggs' && eggs > 0) {
+      const calcRate = (currentTotal * 100) / eggs
+      setRatePer100(calcRate > 0 ? String(Number(calcRate.toFixed(2))) : '')
+    } else if (partner === 'rate' && currentRate > 0) {
+      const calcEggs = (currentTotal * 100) / currentRate
+      setNumEggs(calcEggs > 0 ? String(Number(calcEggs.toFixed(2))) : '')
+    } else if (eggs > 0) {
+      const calcRate = (currentTotal * 100) / eggs
+      setRatePer100(calcRate > 0 ? String(Number(calcRate.toFixed(2))) : '')
+    } else if (currentRate > 0) {
+      const calcEggs = (currentTotal * 100) / currentRate
+      setNumEggs(calcEggs > 0 ? String(Number(calcEggs.toFixed(2))) : '')
+    }
+  }
+
+  const creditKeptToday = txType === 'sale' ? Math.max(0, calculatedAmount - paid) : 0
+  const creditReducedToday = txType === 'sale' ? Math.max(0, paid - calculatedAmount) : paid
   const creditChange = creditReducedToday - creditKeptToday
   const newOutstanding = Math.max(0, customer.outstandingCredit - creditChange)
 
+  const isFormValid = txType === 'sale' ? eggsCount > 0 && calculatedAmount > 0 : paid > 0
+
   const handleSave = () => {
-    if (eggsCount <= 0 || rate <= 0) return
+    if (!isFormValid) return
 
-    const traysEquivalent = eggsCount / 30
-
-    const tx: Transaction = {
-      id: 't' + uid(),
-      customerId: customer.id,
-      date: today,
-      time: getTime(),
-      trays: traysEquivalent,
-      amountToBePaid: calculatedAmount,
-      amountPaid: paid,
-      paymentMethod,
-      creditKeptToday,
-      creditChange,
+    let tx: Transaction
+    if (txType === 'sale') {
+      const traysEquivalent = eggsCount / 30
+      tx = {
+        id: 't' + uid(),
+        customerId: customer.id,
+        type: 'sale',
+        date: today,
+        time: getTime(),
+        trays: traysEquivalent,
+        amountToBePaid: calculatedAmount,
+        amountPaid: paid,
+        paymentMethod,
+        creditKeptToday,
+        creditChange,
+      }
+    } else {
+      tx = {
+        id: 't' + uid(),
+        customerId: customer.id,
+        type: 'payment',
+        date: today,
+        time: getTime(),
+        trays: 0,
+        amountToBePaid: 0,
+        amountPaid: paid,
+        paymentMethod,
+        creditKeptToday: 0,
+        creditChange: paid,
+        notes: notes.trim(),
+      }
     }
 
     onSave(tx, newOutstanding)
@@ -98,103 +223,204 @@ export function TransactionScreen({
           </span>
         </div>
 
-        {/* ── Today's Sale Card ── */}
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
-          <p className="text-sm font-700" style={{ color: '#374151', fontWeight: 700 }}>Today's Sale</p>
+        {/* Transaction Type Segmented Switcher */}
+        <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+          <button
+            type="button"
+            onClick={() => setTxType('sale')}
+            className={`flex-1 py-3 text-sm font-800 rounded-xl transition-all ${
+              txType === 'sale'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            🛒 Record Sale
+          </button>
+          <button
+            type="button"
+            onClick={() => setTxType('payment')}
+            className={`flex-1 py-3 text-sm font-800 rounded-xl transition-all ${
+              txType === 'payment'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            💰 Payment Only
+          </button>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {/* Number of Eggs */}
+        {/* ── Sale Form ── */}
+        {txType === 'sale' && (
+          <>
+            <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
+              <p className="text-sm font-700" style={{ color: '#374151', fontWeight: 700 }}>Today's Sale</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Number of Eggs */}
+                <div>
+                  <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Number of Eggs</label>
+                  <input
+                    type="number"
+                    value={numEggs}
+                    onChange={e => handleEggsChange(e.target.value)}
+                    placeholder="e.g. 90"
+                    className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+                    style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+                  />
+                </div>
+
+                {/* Rate per 100 Eggs */}
+                <div>
+                  <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Rate per 100 Eggs (₹)</label>
+                  <input
+                    type="number"
+                    value={ratePer100}
+                    onChange={e => handleRateChange(e.target.value)}
+                    placeholder="e.g. 225"
+                    className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+                    style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+
+              {/* Total Amount / Amount to Pay Input */}
+              <div>
+                <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Total Amount / Amount to Pay (₹)</label>
+                <input
+                  type="number"
+                  value={totalAmount}
+                  onChange={e => handleTotalChange(e.target.value)}
+                  placeholder="e.g. 202.50"
+                  className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+                  style={{ borderColor: '#a7f3d0', color: '#059669', fontWeight: 800 }}
+                />
+              </div>
+
+              {/* Amount To Pay Calculation Banner */}
+              {eggsCount > 0 && rate > 0 && (
+                <div className="rounded-xl p-3 flex flex-col gap-1" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+                  <p className="text-xs font-600" style={{ color: '#047857', fontWeight: 600 }}>
+                    {eggsCount} eggs × ₹{rate} / 100 = {fmtCurrency(calculatedAmount)}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Payment Received Card ── */}
+            <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
+              <p className="text-sm font-700" style={{ color: '#374151', fontWeight: 700 }}>Payment Received</p>
+
+              <div>
+                <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Amount Paid (₹)</label>
+                <input
+                  type="number"
+                  value={amountPaid}
+                  onChange={e => setAmountPaid(e.target.value)}
+                  placeholder="e.g. 200"
+                  className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+                  style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* Payment Method Toggle */}
+              <div>
+                <label className="text-xs font-600 mb-1.5 block" style={{ color: '#6b7280', fontWeight: 600 }}>Payment Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash')}
+                    className="py-3 rounded-xl text-sm font-700 transition-all border"
+                    style={{
+                      background: paymentMethod === 'cash' ? '#059669' : 'white',
+                      color: paymentMethod === 'cash' ? 'white' : '#374151',
+                      borderColor: paymentMethod === 'cash' ? '#059669' : '#e5e7eb',
+                      fontWeight: 700,
+                    }}
+                  >
+                    💵 Cash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('gpay')}
+                    className="py-3 rounded-xl text-sm font-700 transition-all border"
+                    style={{
+                      background: paymentMethod === 'gpay' ? '#059669' : 'white',
+                      color: paymentMethod === 'gpay' ? 'white' : '#374151',
+                      borderColor: paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
+                      fontWeight: 700,
+                    }}
+                  >
+                    📱 GPay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Payment Only Form ── */}
+        {txType === 'payment' && (
+          <div className="rounded-2xl p-4 flex flex-col gap-3.5" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
+            <p className="text-sm font-700" style={{ color: '#374151', fontWeight: 700 }}>Record Credit Payment</p>
+
             <div>
-              <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Number of Eggs</label>
+              <label className="text-xs font-600 mb-1 block text-gray-600">Amount Paid (₹)</label>
               <input
                 type="number"
-                value={numEggs}
-                onChange={e => setNumEggs(e.target.value)}
-                placeholder="e.g. 90"
-                className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-                style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+                value={amountPaid}
+                onChange={e => setAmountPaid(e.target.value)}
+                placeholder="e.g. 500"
+                className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-blue-500 transition-colors"
+                style={{ borderColor: '#bfdbfe', color: '#111827', fontWeight: 700 }}
               />
             </div>
 
-            {/* Rate per 100 Eggs */}
+            {/* Payment Method Toggle */}
             <div>
-              <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Rate per 100 Eggs (₹)</label>
+              <label className="text-xs font-600 mb-1.5 block text-gray-600">Payment Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className="py-3 rounded-xl text-sm font-700 transition-all border"
+                  style={{
+                    background: paymentMethod === 'cash' ? '#2563eb' : 'white',
+                    color: paymentMethod === 'cash' ? 'white' : '#374151',
+                    borderColor: paymentMethod === 'cash' ? '#2563eb' : '#e5e7eb',
+                    fontWeight: 700,
+                  }}
+                >
+                  💵 Cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('gpay')}
+                  className="py-3 rounded-xl text-sm font-700 transition-all border"
+                  style={{
+                    background: paymentMethod === 'gpay' ? '#2563eb' : 'white',
+                    color: paymentMethod === 'gpay' ? 'white' : '#374151',
+                    borderColor: paymentMethod === 'gpay' ? '#2563eb' : '#e5e7eb',
+                    fontWeight: 700,
+                  }}
+                >
+                  📱 GPay
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-600 mb-1 block text-gray-600">Notes (Optional)</label>
               <input
-                type="number"
-                value={ratePer100}
-                onChange={e => setRatePer100(e.target.value)}
-                placeholder="e.g. 225"
-                className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-                style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+                type="text"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="e.g. Clearing previous balance"
+                className="w-full rounded-xl px-3.5 py-2.5 text-sm font-600 border outline-none bg-white focus:border-blue-500 transition-colors"
+                style={{ borderColor: '#e5e7eb', color: '#111827', fontWeight: 600 }}
               />
             </div>
           </div>
-
-          {/* Amount To Pay Calculation Banner */}
-          <div className="rounded-xl p-3 flex flex-col gap-1" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-600" style={{ color: '#065f46', fontWeight: 600 }}>Amount to Pay</span>
-              <span className="text-xl font-800" style={{ fontWeight: 800, color: '#059669' }}>
-                {fmtCurrency(calculatedAmount)}
-              </span>
-            </div>
-            {eggsCount > 0 && rate > 0 && (
-              <p className="text-xs font-600 mt-0.5" style={{ color: '#047857', fontWeight: 600 }}>
-                {eggsCount} eggs × ₹{rate} / 100 = {fmtCurrency(calculatedAmount)}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ── Payment Received Card ── */}
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
-          <p className="text-sm font-700" style={{ color: '#374151', fontWeight: 700 }}>Payment Received</p>
-
-          <div>
-            <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Amount Paid (₹)</label>
-            <input
-              type="number"
-              value={amountPaid}
-              onChange={e => setAmountPaid(e.target.value)}
-              placeholder="e.g. 200"
-              className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-              style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
-            />
-          </div>
-
-          {/* Payment Method Toggle */}
-          <div>
-            <label className="text-xs font-600 mb-1.5 block" style={{ color: '#6b7280', fontWeight: 600 }}>Payment Method</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('cash')}
-                className="py-3 rounded-xl text-sm font-700 transition-all border"
-                style={{
-                  background: paymentMethod === 'cash' ? '#059669' : 'white',
-                  color: paymentMethod === 'cash' ? 'white' : '#374151',
-                  borderColor: paymentMethod === 'cash' ? '#059669' : '#e5e7eb',
-                  fontWeight: 700,
-                }}
-              >
-                💵 Cash
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('gpay')}
-                className="py-3 rounded-xl text-sm font-700 transition-all border"
-                style={{
-                  background: paymentMethod === 'gpay' ? '#059669' : 'white',
-                  color: paymentMethod === 'gpay' ? 'white' : '#374151',
-                  borderColor: paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
-                  fontWeight: 700,
-                }}
-              >
-                📱 GPay
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* ── Updated Outstanding Credit Preview ── */}
         <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: '#f3f4f6' }}>
@@ -219,15 +445,15 @@ export function TransactionScreen({
         {/* Save button */}
         <button
           onClick={handleSave}
-          disabled={eggsCount <= 0 || rate <= 0}
-          className="w-full py-4 rounded-2xl text-base font-800 active:scale-98 transition-all shadow-lg mt-2"
+          disabled={!isFormValid}
+          className="w-full py-4 rounded-2xl text-base font-800 active:scale-98 transition-all shadow-lg mt-2 disabled:opacity-50"
           style={{
-            background: eggsCount > 0 && rate > 0 ? '#059669' : '#9ca3af',
+            background: isFormValid ? (txType === 'sale' ? '#059669' : '#2563eb') : '#9ca3af',
             color: 'white',
             fontWeight: 800,
           }}
         >
-          {savedMsg ? '✓ ' + savedMsg : 'Save Transaction'}
+          {savedMsg ? '✓ ' + savedMsg : txType === 'sale' ? 'Save Sale Transaction' : 'Save Credit Payment'}
         </button>
       </div>
     </div>

@@ -10,6 +10,7 @@ export function AddExpenseScreen({
   onBack: () => void
   onSaveExpense: (expense: Expense) => void
 }) {
+  const [expenseDate, setExpenseDate] = useState(today)
   const [amountSpent, setAmountSpent] = useState('')
   const [purpose, setPurpose] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -22,7 +23,7 @@ export function AddExpenseScreen({
 
     const newExpense: Expense = {
       id: 'e' + uid(),
-      date: today,
+      date: expenseDate || today,
       time: getTime(),
       amount: amountVal,
       purpose: purpose.trim(),
@@ -53,6 +54,19 @@ export function AddExpenseScreen({
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
         {/* Expense Card */}
         <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
+          {/* Expense Date */}
+          <div>
+            <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Expense Date</label>
+            <input
+              type="date"
+              max={today}
+              value={expenseDate}
+              onChange={e => setExpenseDate(e.target.value)}
+              className="w-full rounded-xl px-3.5 py-3 text-sm font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+              style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+            />
+          </div>
+
           {/* Amount Spent */}
           <div>
             <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Amount Spent (₹)</label>

@@ -5,6 +5,7 @@ export interface CustomerEntity {
   name: string
   subtitle?: string
   route_id: string
+  opening_credit: number
   outstanding_credit: number
   created_at?: string
   updated_at?: string
@@ -32,18 +33,22 @@ export class CustomerRepository {
     name: string
     subtitle?: string
     route_id: string
+    opening_credit?: number
     outstanding_credit?: number
   }): Promise<void> {
     const now = new Date().toISOString()
+    const opening = customer.opening_credit || 0
+    const outstanding = customer.outstanding_credit !== undefined ? customer.outstanding_credit : opening
     await dbInstance.execute(
-      `INSERT INTO customers (id, name, subtitle, route_id, outstanding_credit, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         customer.id,
         customer.name,
         customer.subtitle || '',
         customer.route_id,
-        customer.outstanding_credit || 0,
+        opening,
+        outstanding,
         now,
         now,
       ]
@@ -58,12 +63,13 @@ export class CustomerRepository {
     const name = fields.name !== undefined ? fields.name : existing.name
     const subtitle = fields.subtitle !== undefined ? fields.subtitle : existing.subtitle
     const route_id = fields.route_id !== undefined ? fields.route_id : existing.route_id
+    const opening_credit = fields.opening_credit !== undefined ? fields.opening_credit : (existing.opening_credit || 0)
     const outstanding_credit = fields.outstanding_credit !== undefined ? fields.outstanding_credit : existing.outstanding_credit
 
     await dbInstance.execute(
-      `UPDATE customers SET name = ?, subtitle = ?, route_id = ?, outstanding_credit = ?, updated_at = ?
+      `UPDATE customers SET name = ?, subtitle = ?, route_id = ?, opening_credit = ?, outstanding_credit = ?, updated_at = ?
        WHERE id = ?`,
-      [name, subtitle, route_id, outstanding_credit, now, id]
+      [name, subtitle, route_id, opening_credit, outstanding_credit, now, id]
     )
   }
 

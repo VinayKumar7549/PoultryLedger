@@ -7,6 +7,21 @@ export const fmtCurrency = (n: number): string => {
   return `₹${abs.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+/**
+ * Strict ASCII Currency Formatter for Native PDF Engine
+ * Formats numbers as 'Rs. 1,23,456.00' using pure ASCII digits and standard spaces.
+ * Eliminates all Unicode non-breaking spaces (\u00A0, \u202F) and missing glyph bugs (₹).
+ */
+export const fmtPdfCurrency = (n: number): string => {
+  if (n === undefined || n === null || isNaN(n)) return 'Rs. 0.00'
+  const abs = Math.abs(n)
+  const str = abs.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).replace(/[\u00A0\u202F]/g, ' ')
+  return `Rs. ${str}`
+}
+
 export const fmtTrays = (n: number): string => {
   if (n === undefined || n === null || isNaN(n) || n <= 0) return '0 trays'
   const val = Number.isInteger(n)

@@ -1,0 +1,67 @@
+# ================================
+# Dependencies
+# ================================
+node_modules/
+
+# Package managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Build output
+dist/
+build/
+coverage/
+
+# Vite
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ================================
+# Android / Capacitor
+# ================================
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/local.properties
+android/.idea/
+
+# Generated APK/AAB
+*.apk
+*.aab
+
+# Gradle cache
+.gradle/
+
+# ================================
+# Claude / AI
+# ================================
+CLAUDE.md
+AGENTS.md
+
+# ================================
+# Temporary
+# ================================
+*.tmp
+*.temp

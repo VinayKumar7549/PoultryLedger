@@ -1,5 +1,5 @@
-import { Customer, EggPurchase } from '../types'
 import { today } from '../utils/date'
+import { dbInstance } from '../database/database'
 
 export interface InventoryMetrics {
   remainingEggs: number
@@ -8,53 +8,56 @@ export interface InventoryMetrics {
   todayPurchasesCount: number
 }
 
-export const calculateInventoryMetrics = (
-  purchases: EggPurchase[],
-  customers: Record<string, Customer>
-): InventoryMetrics => {
-  const safePurchases = purchases || []
-  const safeCustomers = customers || {}
+export async function getSQLiteInventoryMetrics(): Promise<InventoryMetrics> {
+  try {
+    await dbInstance.initDatabase()
 
-  // Total Eggs Purchased = Sum of all purchase records (Number of Trays × 30)
-  const totalEggsPurchased = safePurchases.reduce((sum, p) => {
-    const trays = Number(p?.trays) || 0
-    return sum + (trays * 30)
-  }, 0)
+    const purchaseRes = await dbInstance.query(
+      `SELECT COALESCE(SUM(trays * 30), 0) AS total_eggs_purchased, COUNT(*) AS purchase_count FROM purchases`
+    )
+    const totalEggsPurchased = Number(purchaseRes[0]?.total_eggs_purchased) || 0
+    const purchaseCount = Number(purchaseRes[0]?.purchase_count) || 0
 
-  // Total Eggs Sold = Sum of Number of Eggs sold in every transaction
-  const totalEggsSold = Object.values(safeCustomers).reduce((sum, c) => {
-    const custTx = c?.transactions || []
-    return sum + custTx.reduce((tSum, t) => {
-      const trays = Number(t?.trays) || 0
-      return tSum + Math.round(trays * 30)
-    }, 0)
-  }, 0)
+    const txRes = await dbInstance.query(
+      `SELECT COALESCE(SUM(ROUND(trays * 30)), 0) AS total_eggs_sold FROM transactions`
+    )
+    const totalEggsSold = Number(txRes[0]?.total_eggs_sold) || 0
 
-  // Initial State: If there are no purchases yet: Remaining Eggs = 0, Remaining Trays = 0
-  let remainingEggs = 0
-  let remainingTrays = 0
+    const todayRes = await dbInstance.query(
+      `SELECT COALESCE(SUM(total_amount), 0) AS today_purchase_cost, COUNT(*) AS today_purchases_count FROM purchases WHERE date = ?`,
+      [today]
+    )
+    const todayPurchaseCost = Number(todayRes[0]?.today_purchase_cost) || 0
+    const todayPurchasesCount = Number(todayRes[0]?.today_purchases_count) || 0
 
-  if (safePurchases.length > 0) {
-    remainingEggs = totalEggsPurchased - totalEggsSold
-    remainingTrays = remainingEggs / 30
-  }
+    let remainingEggs = 0
+    let remainingTrays = 0
 
-  // Safety checks to prevent NaN or undefined values
-  if (isNaN(remainingEggs) || remainingEggs === undefined || remainingEggs === null) {
-    remainingEggs = 0
-  }
-  if (isNaN(remainingTrays) || remainingTrays === undefined || remainingTrays === null) {
-    remainingTrays = 0
-  }
+    if (purchaseCount > 0) {
+      remainingEggs = totalEggsPurchased - totalEggsSold
+      remainingTrays = remainingEggs / 30
+    }
 
-  const todayPurchasesList = safePurchases.filter(p => p?.date === today)
-  const todayPurchaseCost = todayPurchasesList.reduce((sum, p) => sum + (Number(p?.totalAmount) || 0), 0)
-  const todayPurchasesCount = todayPurchasesList.length
+    if (isNaN(remainingEggs) || remainingEggs === undefined || remainingEggs === null) {
+      remainingEggs = 0
+    }
+    if (isNaN(remainingTrays) || remainingTrays === undefined || remainingTrays === null) {
+      remainingTrays = 0
+    }
 
-  return {
-    remainingEggs,
-    remainingTrays,
-    todayPurchaseCost,
-    todayPurchasesCount,
+    return {
+      remainingEggs,
+      remainingTrays,
+      todayPurchaseCost,
+      todayPurchasesCount,
+    }
+  } catch (err) {
+    console.error('Error fetching SQLite inventory metrics:', err)
+    return {
+      remainingEggs: 0,
+      remainingTrays: 0,
+      todayPurchaseCost: 0,
+      todayPurchasesCount: 0,
+    }
   }
 }

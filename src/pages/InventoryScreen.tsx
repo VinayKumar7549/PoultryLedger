@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Customer, EggPurchase, EggType } from '../types'
 import { today, getTime, fmtDate, uid } from '../utils/date'
 import { fmtCurrency, fmtTrays } from '../utils/format'
-import { calculateInventoryMetrics } from '../services/inventoryService'
+import { getSQLiteInventoryMetrics, InventoryMetrics } from '../services/inventoryService'
 import { CustomEggTypeSelect } from '../components/common/CustomEggTypeSelect'
+import { SearchBar } from '../components/common/SearchBar'
+import { DateFilterPicker } from '../components/common/DateFilterPicker'
+import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
+import { generateInventoryReportPdf } from '../services/pdfGenerator'
 import {
-  IconBack,
+  IconMenu,
   IconTrash,
   IconEdit,
 } from '../components/common/Icons'
@@ -13,14 +17,14 @@ import {
 export function InventoryScreen({
   customers,
   purchases,
-  onBack,
+  onMenuOpen,
   onSavePurchase,
   onUpdatePurchase,
   onDeletePurchase,
 }: {
   customers: Record<string, Customer>
   purchases: EggPurchase[]
-  onBack: () => void
+  onMenuOpen: () => void
   onSavePurchase: (p: EggPurchase) => void
   onUpdatePurchase: (p: EggPurchase) => void
   onDeletePurchase: (id: string) => void
@@ -31,6 +35,39 @@ export function InventoryScreen({
   const [ratePer100, setRatePer100] = useState('')
   const [savedMsg, setSavedMsg] = useState('')
   const [purchaseToDelete, setPurchaseToDelete] = useState<EggPurchase | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showDatePicker, setShowDatePicker] = useState(false)
+
+  const [inventory, setInventory] = useState<InventoryMetrics>({
+    remainingEggs: 0,
+    remainingTrays: 0,
+    todayPurchaseCost: 0,
+    todayPurchasesCount: 0,
+  })
+
+  useEffect(() => {
+    getSQLiteInventoryMetrics().then(setInventory)
+  }, [purchases, customers])
+
+  const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
+    const range = resolveDateRange(filter, customStart, customEnd)
+    const reportData = await pdfReportDataService.getInventoryReport(range)
+    if (reportData) {
+      await generateInventoryReportPdf(reportData)
+    }
+  }
+
+  const filteredPurchases = purchases.filter(p => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase().trim()
+    const typeStr = p.eggType === 'damaged' ? 'damaged broken' : 'normal stock'
+    const typeMatch = typeStr.includes(q)
+    const dateMatch = (p.date || '').toLowerCase().includes(q) || fmtDate(p.date).toLowerCase().includes(q)
+    const traysMatch = String(p.trays).includes(q)
+    const rateMatch = String(p.ratePer100).includes(q)
+    const amountMatch = String(p.totalAmount).includes(q)
+    return typeMatch || dateMatch || traysMatch || rateMatch || amountMatch
+  })
 
   // Calculations for current form input
   const numTrays = parseInt(trays) || 0
@@ -38,16 +75,8 @@ export function InventoryScreen({
   const rate = parseFloat(ratePer100) || 0
   const purchaseAmount = (totalEggs * rate) / 100
 
-  // Today's purchase summary metrics with NaN safety
-  const safePurchases = purchases || []
-  const safeCustomers = customers || {}
-
-  const todayPurchasesList = safePurchases.filter(p => p.date === today)
-  const todayTotalCost = todayPurchasesList.reduce((sum, p) => sum + (p.totalAmount || 0), 0)
-  const todayPurchasesCount = todayPurchasesList.length
-
-  // Inventory stock calculations using service helper
-  const inventory = calculateInventoryMetrics(safePurchases, safeCustomers)
+  const todayTotalCost = inventory.todayPurchaseCost
+  const todayPurchasesCount = inventory.todayPurchasesCount
 
   const handleStartEdit = (p: EggPurchase) => {
     setEditingId(p.id)
@@ -115,11 +144,20 @@ export function InventoryScreen({
   return (
     <div className="flex flex-col h-full bg-white relative">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: '#f3f4f6' }}>
-        <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-gray-100" style={{ color: '#111827' }}>
-          <IconBack />
+      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={onMenuOpen} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100" style={{ color: '#111827' }}>
+            <IconMenu />
+          </button>
+          <h2 className="text-lg font-extrabold text-gray-900 truncate">Inventory Management</h2>
+        </div>
+
+        <button
+          onClick={() => setShowDatePicker(true)}
+          className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-slate-800 active:scale-95 transition-transform"
+        >
+          <span>📄 Export PDF</span>
         </button>
-        <h2 className="flex-1 text-lg font-800 truncate" style={{ fontWeight: 800, color: '#111827' }}>Inventory Management</h2>
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -311,12 +349,18 @@ export function InventoryScreen({
             Purchase History Log
           </p>
 
-          {purchases.length === 0 ? (
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search purchases..."
+          />
+
+          {filteredPurchases.length === 0 ? (
             <div className="py-8 text-center text-xs" style={{ color: '#6b7280' }}>
-              No purchase records recorded yet.
+              No purchase records found.
             </div>
           ) : (
-            purchases.map(p => (
+            filteredPurchases.map(p => (
               <div
                 key={p.id}
                 className="rounded-2xl p-4 flex flex-col gap-2.5"
@@ -382,6 +426,14 @@ export function InventoryScreen({
           )}
         </div>
       </div>
+
+      {/* Date Filter Picker Dialog */}
+      <DateFilterPicker
+        isOpen={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={handleConfirmDateFilter}
+        title="Inventory Report Period"
+      />
     </div>
   )
 }

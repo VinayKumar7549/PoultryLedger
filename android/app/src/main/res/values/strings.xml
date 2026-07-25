@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PoultryLedger</string>
+    <string name="title_activity_main">PoultryLedger</string>
+    <string name="package_name">com.vinay.poultryledger</string>
+    <string name="custom_url_scheme">com.vinay.poultryledger</string>
+</resources>

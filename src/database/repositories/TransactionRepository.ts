@@ -3,6 +3,7 @@ import { dbInstance } from '../database'
 export interface TransactionEntity {
   id: string
   customer_id: string
+  type?: string
   date: string
   time: string
   trays: number
@@ -11,6 +12,7 @@ export interface TransactionEntity {
   payment_method: string
   credit_kept_today: number
   credit_change: number
+  notes?: string
   created_at?: string
   updated_at?: string
 }
@@ -41,13 +43,16 @@ export class TransactionRepository {
 
   async create(tx: Omit<TransactionEntity, 'created_at' | 'updated_at'>): Promise<void> {
     const now = new Date().toISOString()
+    const typeVal = tx.type || 'sale'
+    const notesVal = tx.notes || ''
     await dbInstance.execute(
       `INSERT INTO transactions 
-       (id, customer_id, date, time, trays, amount_to_be_paid, amount_paid, payment_method, credit_kept_today, credit_change, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, customer_id, type, date, time, trays, amount_to_be_paid, amount_paid, payment_method, credit_kept_today, credit_change, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tx.id,
         tx.customer_id,
+        typeVal,
         tx.date,
         tx.time,
         tx.trays,
@@ -56,6 +61,7 @@ export class TransactionRepository {
         tx.payment_method,
         tx.credit_kept_today,
         tx.credit_change,
+        notesVal,
         now,
         now,
       ]
@@ -71,11 +77,12 @@ export class TransactionRepository {
 
     await dbInstance.execute(
       `UPDATE transactions SET 
-       customer_id = ?, date = ?, time = ?, trays = ?, amount_to_be_paid = ?, amount_paid = ?, 
-       payment_method = ?, credit_kept_today = ?, credit_change = ?, updated_at = ?
+       customer_id = ?, type = ?, date = ?, time = ?, trays = ?, amount_to_be_paid = ?, amount_paid = ?, 
+       payment_method = ?, credit_kept_today = ?, credit_change = ?, notes = ?, updated_at = ?
        WHERE id = ?`,
       [
         updated.customer_id,
+        updated.type || 'sale',
         updated.date,
         updated.time,
         updated.trays,
@@ -84,6 +91,7 @@ export class TransactionRepository {
         updated.payment_method,
         updated.credit_kept_today,
         updated.credit_change,
+        updated.notes || '',
         now,
         id,
       ]

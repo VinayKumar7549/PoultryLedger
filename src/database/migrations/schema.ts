@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS customers (
   name TEXT NOT NULL,
   subtitle TEXT,
   route_id TEXT NOT NULL,
+  opening_credit REAL NOT NULL DEFAULT 0,
   outstanding_credit REAL NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
   updated_at TEXT NOT NULL DEFAULT (DATETIME('now')),
@@ -22,6 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_route_id ON customers(route_id);
 CREATE TABLE IF NOT EXISTS transactions (
   id TEXT PRIMARY KEY,
   customer_id TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'sale',
   date TEXT NOT NULL,
   time TEXT NOT NULL,
   trays REAL NOT NULL,
@@ -30,6 +32,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   payment_method TEXT NOT NULL,
   credit_kept_today REAL NOT NULL DEFAULT 0,
   credit_change REAL NOT NULL DEFAULT 0,
+  notes TEXT,
   created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
   updated_at TEXT NOT NULL DEFAULT (DATETIME('now')),
   FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
