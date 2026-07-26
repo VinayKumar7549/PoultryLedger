@@ -1,0 +1,3 @@
+- [ ] Delete project-level `.gradle` directory
+- [ ] Delete global Gradle transform cache for 9.5.0
+- [ ] Perform Gradle sync
