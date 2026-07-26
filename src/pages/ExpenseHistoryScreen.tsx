@@ -7,6 +7,8 @@ import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
 import { generateExpenseReportPdf } from '../services/pdfGenerator'
+import { FileActionResult } from '../services/fileService'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import {
   IconMenu,
   IconCalendar,
@@ -34,6 +36,7 @@ export function ExpenseHistoryScreen({
   }>({ expenses: [], totalExpenseDay: 0 })
   const [searchQuery, setSearchQuery] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   useEffect(() => {
     historyService.getDailyExpenses(expenseDate).then(res => {
@@ -42,10 +45,19 @@ export function ExpenseHistoryScreen({
   }, [expenseDate, expenses])
 
   const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
-    const range = resolveDateRange(filter, customStart, customEnd)
-    const reportData = await pdfReportDataService.getExpenseReport(range)
-    if (reportData) {
-      await generateExpenseReportPdf(reportData)
+    try {
+      const range = resolveDateRange(filter, customStart, customEnd)
+      const reportData = await pdfReportDataService.getExpenseReport(range)
+      if (reportData) {
+        const res = await generateExpenseReportPdf(reportData)
+        if (res && res.success) {
+          setExportSuccessDetails(res)
+        } else if (res && !res.success) {
+          alert(`Export Failed: ${res.message}`)
+        }
+      }
+    } catch (err: any) {
+      alert(`Export Error: ${err?.message || 'Unable to generate PDF'}`)
     }
   }
 
@@ -180,6 +192,8 @@ export function ExpenseHistoryScreen({
         onConfirm={handleConfirmDateFilter}
         title="Expense Report Period"
       />
+
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

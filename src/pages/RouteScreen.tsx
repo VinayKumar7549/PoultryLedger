@@ -436,16 +436,16 @@ export function RouteScreen({
                 ) : (
                   <>
                     <button
-                      onClick={() => handleOpenEditModal(customer)}
-                      title="Edit Customer"
-                      className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-transform"
-                      style={{ background: '#f3f4f6', color: '#4b5563' }}
+                      onClick={() => navigate('customer_history', routeId, customer.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-700 active:scale-95 transition-transform"
+                      style={{ background: '#e0e7ff', color: '#3730a3', fontWeight: 700 }}
                     >
-                      <IconEdit />
+                      <IconHistory />
+                      <span>View History</span>
                     </button>
                     <button
                       onClick={() => navigate('transaction', routeId, customer.id)}
-                      className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-700 active:scale-95 transition-transform"
+                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-700 active:scale-95 transition-transform"
                       style={{ background: '#059669', color: 'white', fontWeight: 700 }}
                     >
                       <span>Record Sale</span>

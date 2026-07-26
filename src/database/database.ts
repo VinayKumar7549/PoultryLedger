@@ -121,6 +121,10 @@ class WebInMemoryDB {
     this.init()
     const cleanSql = sql.trim().toLowerCase()
 
+    if (cleanSql.startsWith('begin') || cleanSql.startsWith('commit') || cleanSql.startsWith('rollback')) {
+      return { changes: { changes: 0 } }
+    }
+
     if (cleanSql.startsWith('insert into customers')) {
       const item = {
         id: values[0],
@@ -157,8 +161,12 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from customers')) {
-      const id = values[0]
-      this.tables.customers = this.tables.customers.filter(c => String(c.id) !== String(id))
+      if (values.length === 0 || !values[0]) {
+        this.tables.customers = []
+      } else {
+        const id = values[0]
+        this.tables.customers = this.tables.customers.filter(c => String(c.id) !== String(id))
+      }
       this.save()
       return { changes: { changes: 1 } }
     }
@@ -182,8 +190,12 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from routes')) {
-      const id = values[0]
-      this.tables.routes = this.tables.routes.filter(r => String(r.id) !== String(id))
+      if (values.length === 0 || !values[0]) {
+        this.tables.routes = []
+      } else {
+        const id = values[0]
+        this.tables.routes = this.tables.routes.filter(r => String(r.id) !== String(id))
+      }
       this.save()
       return { changes: { changes: 1 } }
     }
@@ -235,8 +247,12 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from transactions')) {
-      const id = values[0]
-      this.tables.transactions = this.tables.transactions.filter(t => String(t.id) !== String(id))
+      if (values.length === 0 || !values[0]) {
+        this.tables.transactions = []
+      } else {
+        const id = values[0]
+        this.tables.transactions = this.tables.transactions.filter(t => String(t.id) !== String(id))
+      }
       this.save()
       return { changes: { changes: 1 } }
     }
@@ -281,8 +297,12 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from purchases')) {
-      const id = values[0]
-      this.tables.purchases = this.tables.purchases.filter(p => String(p.id) !== String(id))
+      if (values.length === 0 || !values[0]) {
+        this.tables.purchases = []
+      } else {
+        const id = values[0]
+        this.tables.purchases = this.tables.purchases.filter(p => String(p.id) !== String(id))
+      }
       this.save()
       return { changes: { changes: 1 } }
     }
@@ -323,14 +343,18 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from expenses')) {
-      const id = values[0]
-      this.tables.expenses = this.tables.expenses.filter(e => String(e.id) !== String(id))
+      if (values.length === 0 || !values[0]) {
+        this.tables.expenses = []
+      } else {
+        const id = values[0]
+        this.tables.expenses = this.tables.expenses.filter(e => String(e.id) !== String(id))
+      }
       this.save()
       return { changes: { changes: 1 } }
     }
 
     if (cleanSql.startsWith('insert into settings')) {
-      const item = { key: values[0], value: values[1], created_at: values[2], updated_at: values[3] }
+      const item = { key: values[0], value: String(values[1] ?? ''), created_at: values[2], updated_at: values[3] }
       this.tables.settings = this.tables.settings.filter(s => s.key !== item.key)
       this.tables.settings.push(item)
       this.save()
@@ -338,8 +362,12 @@ class WebInMemoryDB {
     }
 
     if (cleanSql.startsWith('delete from settings')) {
-      const key = values[0]
-      this.tables.settings = this.tables.settings.filter(s => s.key !== key)
+      if (values.length === 0 || !values[0]) {
+        this.tables.settings = []
+      } else {
+        const key = values[0]
+        this.tables.settings = this.tables.settings.filter(s => s.key !== key)
+      }
       this.save()
       return { changes: { changes: 1 } }
     }

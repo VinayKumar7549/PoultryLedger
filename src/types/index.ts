@@ -3,6 +3,7 @@ export type Screen =
   | 'route'
   | 'transaction'
   | 'history'
+  | 'customer_history'
   | 'credit'
   | 'expenses'
   | 'expenseHistory'

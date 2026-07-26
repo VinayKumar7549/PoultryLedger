@@ -24,6 +24,8 @@ import {
   generateDailySummaryPdf,
   generateMonthlySummaryPdf,
 } from '../services/pdfGenerator'
+import { FileActionResult } from '../services/fileService'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 
 export type ReportType =
   | 'customer_statement'
@@ -67,6 +69,7 @@ export function ReportsScreen({
   const [inventoryData, setInventoryData] = useState<InventoryReport | null>(null)
   const [dailyData, setDailyData] = useState<DailySummaryReport | null>(null)
   const [monthlyData, setMonthlyData] = useState<MonthlySummaryReport | null>(null)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   // Fetch Report Data on Filter / Active Report Change
   useEffect(() => {
@@ -111,20 +114,34 @@ export function ReportsScreen({
 
   // PDF Export Trigger
   const handleExportPdf = async () => {
-    if (activeReport === 'customer_statement' && statementData) {
-      await generateCustomerStatementPdf(statementData)
-    } else if (activeReport === 'credit' && creditData) {
-      await generateCreditReportPdf(creditData)
-    } else if (activeReport === 'expense' && expenseData) {
-      await generateExpenseReportPdf(expenseData)
-    } else if (activeReport === 'sales' && salesData) {
-      await generateSalesReportPdf(salesData)
-    } else if (activeReport === 'inventory' && inventoryData) {
-      await generateInventoryReportPdf(inventoryData)
-    } else if (activeReport === 'daily' && dailyData) {
-      await generateDailySummaryPdf(dailyData)
-    } else if (activeReport === 'monthly' && monthlyData) {
-      await generateMonthlySummaryPdf(monthlyData)
+    try {
+      setIsLoading(true)
+      let res: FileActionResult | undefined
+      if (activeReport === 'customer_statement' && statementData) {
+        res = await generateCustomerStatementPdf(statementData)
+      } else if (activeReport === 'credit' && creditData) {
+        res = await generateCreditReportPdf(creditData)
+      } else if (activeReport === 'expense' && expenseData) {
+        res = await generateExpenseReportPdf(expenseData)
+      } else if (activeReport === 'sales' && salesData) {
+        res = await generateSalesReportPdf(salesData)
+      } else if (activeReport === 'inventory' && inventoryData) {
+        res = await generateInventoryReportPdf(inventoryData)
+      } else if (activeReport === 'daily' && dailyData) {
+        res = await generateDailySummaryPdf(dailyData)
+      } else if (activeReport === 'monthly' && monthlyData) {
+        res = await generateMonthlySummaryPdf(monthlyData)
+      }
+
+      if (res && res.success) {
+        setExportSuccessDetails(res)
+      } else if (res && !res.success) {
+        alert(`Export Failed: ${res.message}`)
+      }
+    } catch (err: any) {
+      alert(`Export Error: ${err?.message || 'Unable to generate PDF report.'}`)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -775,6 +792,8 @@ export function ReportsScreen({
           </>
         )}
       </div>
+
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

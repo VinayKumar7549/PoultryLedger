@@ -8,6 +8,8 @@ import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
 import { generateInventoryReportPdf } from '../services/pdfGenerator'
+import { FileActionResult } from '../services/fileService'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import {
   IconMenu,
   IconTrash,
@@ -37,6 +39,7 @@ export function InventoryScreen({
   const [purchaseToDelete, setPurchaseToDelete] = useState<EggPurchase | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   const [inventory, setInventory] = useState<InventoryMetrics>({
     remainingEggs: 0,
@@ -50,10 +53,19 @@ export function InventoryScreen({
   }, [purchases, customers])
 
   const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
-    const range = resolveDateRange(filter, customStart, customEnd)
-    const reportData = await pdfReportDataService.getInventoryReport(range)
-    if (reportData) {
-      await generateInventoryReportPdf(reportData)
+    try {
+      const range = resolveDateRange(filter, customStart, customEnd)
+      const reportData = await pdfReportDataService.getInventoryReport(range)
+      if (reportData) {
+        const res = await generateInventoryReportPdf(reportData)
+        if (res && res.success) {
+          setExportSuccessDetails(res)
+        } else if (res && !res.success) {
+          alert(`Export Failed: ${res.message}`)
+        }
+      }
+    } catch (err: any) {
+      alert(`Export Error: ${err?.message || 'Unable to generate PDF'}`)
     }
   }
 
@@ -434,6 +446,8 @@ export function InventoryScreen({
         onConfirm={handleConfirmDateFilter}
         title="Inventory Report Period"
       />
+
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

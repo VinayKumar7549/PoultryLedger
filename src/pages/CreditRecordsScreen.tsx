@@ -7,6 +7,8 @@ import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
 import { generateCustomerStatementPdf, generateCreditReportPdf } from '../services/pdfGenerator'
+import { FileActionResult } from '../services/fileService'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import {
   IconMenu,
   IconBack,
@@ -26,6 +28,7 @@ export function CreditRecordsScreen({
   routeNames?: Record<string, string>
 }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
   const [historyEntries, setHistoryEntries] = useState<CreditTimelineEntry[]>([])
   const [totalSystemCredit, setTotalSystemCredit] = useState<number>(0)
   const [searchQuery, setSearchQuery] = useState('')
@@ -51,17 +54,28 @@ export function CreditRecordsScreen({
   }, [selectedCustomerId, selectedCustomer?.outstandingCredit])
 
   const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
-    const range = resolveDateRange(filter, customStart, customEnd)
-    if (pickerState.mode === 'customer' && selectedCustomer) {
-      const data = await pdfReportDataService.getCustomerStatement(selectedCustomer.id, range)
-      if (data) {
-        await generateCustomerStatementPdf(data)
+    try {
+      const range = resolveDateRange(filter, customStart, customEnd)
+      let res: FileActionResult | undefined
+      if (pickerState.mode === 'customer' && selectedCustomer) {
+        const data = await pdfReportDataService.getCustomerStatement(selectedCustomer.id, range)
+        if (data) {
+          res = await generateCustomerStatementPdf(data)
+        }
+      } else if (pickerState.mode === 'credit') {
+        const data = await pdfReportDataService.getCreditReport(range)
+        if (data) {
+          res = await generateCreditReportPdf(data)
+        }
       }
-    } else if (pickerState.mode === 'credit') {
-      const data = await pdfReportDataService.getCreditReport(range)
-      if (data) {
-        await generateCreditReportPdf(data)
+
+      if (res && res.success) {
+        setExportSuccessDetails(res)
+      } else if (res && !res.success) {
+        alert(`Export Failed: ${res.message}`)
       }
+    } catch (err: any) {
+      alert(`Export Error: ${err?.message || 'Unable to generate PDF'}`)
     }
   }
 
@@ -318,6 +332,8 @@ export function CreditRecordsScreen({
         onConfirm={handleConfirmDateFilter}
         title={pickerState.mode === 'customer' ? 'Customer Statement Period' : 'Credit Report Period'}
       />
+
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

@@ -5,14 +5,17 @@ import {
   BackupMetadata,
   BackupHealth,
 } from '../services/backupService'
+import { fileService, FileActionResult } from '../services/fileService'
 import { fmtDate } from '../utils/date'
 import { IconMenu } from '../components/common/Icons'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 
 export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) {
   const [currentBackup, setCurrentBackup] = useState<PoultryLedgerBackup | null>(null)
   const [health, setHealth] = useState<BackupHealth | null>(null)
   const [selectedFileBackup, setSelectedFileBackup] = useState<PoultryLedgerBackup | null>(null)
   const [selectedFileMetadata, setSelectedFileMetadata] = useState<BackupMetadata | null>(null)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [statusMessage, setStatusMessage] = useState<{
@@ -23,6 +26,8 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
   } | null>(null)
 
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false)
+
+  const isAndroid = fileService.isAndroid()
 
   // Load current database stats and backup health on mount
   const refreshStats = async () => {
@@ -46,18 +51,70 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
       setStatusMessage(null)
       const backup = await backupService.createBackup()
       setCurrentBackup(backup)
-      await backupService.downloadBackupFile(backup)
+      const result = await backupService.downloadBackupFile(backup)
       await refreshStats()
-      setStatusMessage({
-        type: 'success',
-        title: 'Backup Downloaded',
-        text: `Backup exported successfully: ${backupService.getBackupFilename(backup.metadata.businessName)}`,
-      })
+
+      if (result.success) {
+        setExportSuccessDetails(result)
+      } else {
+        setStatusMessage({
+          type: 'error',
+          title: 'Backup Failed',
+          text: result.message,
+        })
+      }
     } catch (err: any) {
       setStatusMessage({
         type: 'error',
         title: 'Backup Failed',
         text: err?.message || 'Failed to generate backup.',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const validateAndSelectBackup = (jsonContent: any) => {
+    const validation = backupService.validateBackup(jsonContent)
+
+    if (!validation.valid) {
+      setStatusMessage({
+        type: 'error',
+        title: 'Backup Validation Failed',
+        text: validation.error || 'Invalid backup file structure.',
+        details: validation.details,
+      })
+      setSelectedFileBackup(null)
+      setSelectedFileMetadata(null)
+    } else {
+      setSelectedFileBackup(jsonContent as PoultryLedgerBackup)
+      setSelectedFileMetadata(validation.metadata || null)
+      setShowConfirmModal(true)
+    }
+  }
+
+  const handleAndroidFilePick = async () => {
+    setStatusMessage(null)
+    try {
+      setIsLoading(true)
+      const res = await fileService.pickBackupJsonFile()
+      if (res.cancelled) {
+        return
+      }
+      if (!res.success || !res.data) {
+        setStatusMessage({
+          type: 'error',
+          title: 'Backup Selection Failed',
+          text: res.message || 'Unable to read the selected file.',
+        })
+        return
+      }
+      validateAndSelectBackup(res.data)
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        title: 'File Selection Error',
+        text: err?.message || 'An unexpected error occurred while opening file picker.',
       })
     } finally {
       setIsLoading(false)
@@ -73,22 +130,7 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
     reader.onload = event => {
       try {
         const jsonContent = JSON.parse(event.target?.result as string)
-        const validation = backupService.validateBackup(jsonContent)
-
-        if (!validation.valid) {
-          setStatusMessage({
-            type: 'error',
-            title: 'Backup Validation Failed',
-            text: validation.error || 'Invalid backup file structure.',
-            details: validation.details,
-          })
-          setSelectedFileBackup(null)
-          setSelectedFileMetadata(null)
-        } else {
-          setSelectedFileBackup(jsonContent as PoultryLedgerBackup)
-          setSelectedFileMetadata(validation.metadata || null)
-          setShowConfirmModal(true)
-        }
+        validateAndSelectBackup(jsonContent)
       } catch (err) {
         setStatusMessage({
           type: 'error',
@@ -342,18 +384,36 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
             </ul>
           </div>
 
-          <label className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            <span>Choose Backup File to Restore</span>
-            <input type="file" accept=".json" onChange={handleFileChange} className="hidden" />
-          </label>
+          {isAndroid ? (
+            <button
+              onClick={handleAndroidFilePick}
+              disabled={isLoading}
+              className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              <span>Choose Backup File to Restore</span>
+            </button>
+          ) : (
+            <label className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              <span>Choose Backup File to Restore</span>
+              <input type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+            </label>
+          )}
         </div>
       </div>
 
@@ -449,6 +509,9 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
           <p className="text-xs font-bold text-gray-800">Processing database backup/restore...</p>
         </div>
       )}
+
+      {/* ── EXPORT SUCCESS MODAL ── */}
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

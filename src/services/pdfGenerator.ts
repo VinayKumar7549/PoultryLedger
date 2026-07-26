@@ -10,6 +10,7 @@ import {
   MonthlySummaryReport,
 } from './pdfReportDataService'
 import { businessProfileService } from './businessProfileService'
+import { fileService, FileActionResult } from './fileService'
 import { BusinessProfile } from '../types'
 import { fmtPdfCurrency } from '../utils/format'
 import { fmtDate } from '../utils/date'
@@ -260,9 +261,9 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
   const cleanCName = report.customer.name.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_CustomerStatement_${cleanCName}_${report.dateRange.startDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, `CustomerStatement_${cleanCName}`)
+  return fileService.savePdf(doc, filename, 'Customer Statement Report')
 }
 
 // ── 2. CREDIT REPORT PDF ──
@@ -374,8 +375,8 @@ export async function generateCreditReportPdf(report: CreditReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_CreditReport_${report.dateRange.startDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'CreditReport')
+  return fileService.savePdf(doc, filename, 'Credit Report')
 }
 
 // ── 3. EXPENSE REPORT PDF ──
@@ -506,8 +507,8 @@ export async function generateExpenseReportPdf(report: ExpenseReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_ExpenseReport_${report.dateRange.startDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'ExpenseReport')
+  return fileService.savePdf(doc, filename, 'Expense Report')
 }
 
 // ── 4. INVENTORY REPORT PDF ──
@@ -600,8 +601,8 @@ export async function generateInventoryReportPdf(report: InventoryReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_InventoryReport_${report.dateRange.startDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'InventoryReport')
+  return fileService.savePdf(doc, filename, 'Inventory Report')
 }
 
 // ── 5. SALES REPORT PDF ──
@@ -718,8 +719,8 @@ export async function generateSalesReportPdf(report: SalesReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_SalesReport_${report.dateRange.startDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'SalesReport')
+  return fileService.savePdf(doc, filename, 'Sales Report')
 }
 
 // ── 6. DAILY SUMMARY PDF ──
@@ -826,8 +827,8 @@ export async function generateDailySummaryPdf(report: DailySummaryReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_DailySummary_${report.selectedDate}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'DailySummary')
+  return fileService.savePdf(doc, filename, 'Daily Summary Report')
 }
 
 // ── 7. MONTHLY SUMMARY PDF ──
@@ -930,6 +931,6 @@ export async function generateMonthlySummaryPdf(report: MonthlySummaryReport) {
 
   attachFooter(doc)
 
-  const cleanBName = profile.businessName.replace(/\s+/g, '_')
-  doc.save(`${cleanBName}_MonthlySummary_${report.selectedMonth}.pdf`)
+  const filename = fileService.formatPdfFilename(profile.businessName, 'MonthlySummary')
+  return fileService.savePdf(doc, filename, 'Monthly Summary Report')
 }

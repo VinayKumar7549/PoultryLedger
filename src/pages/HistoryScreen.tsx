@@ -7,6 +7,8 @@ import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
 import { generateDailySummaryPdf } from '../services/pdfGenerator'
+import { FileActionResult } from '../services/fileService'
+import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import {
   IconMenu,
   IconCalendar,
@@ -34,6 +36,7 @@ export function HistoryScreen({
   const [searchQuery, setSearchQuery] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   useEffect(() => {
     historyService.getDailyTransactions(historyDate).then(res => {
@@ -79,7 +82,12 @@ export function HistoryScreen({
           reportData.totalEggsSold = Math.round(reportData.totalTraysSold * 30)
           reportData.customersServedCount = new Set(filteredItems.map(({ customer }) => customer.name)).size
         }
-        await generateDailySummaryPdf(reportData)
+        const res = await generateDailySummaryPdf(reportData)
+        if (res && res.success) {
+          setExportSuccessDetails(res)
+        } else if (res && !res.success) {
+          alert(`Export Failed: ${res.message}`)
+        }
       }
     } catch (err: any) {
       console.error(err)
@@ -96,10 +104,16 @@ export function HistoryScreen({
       const range = resolveDateRange(filter, customStart, customEnd, historyDate)
       const reportData = await pdfReportDataService.getDailySummaryReport(range)
       if (reportData) {
-        await generateDailySummaryPdf(reportData)
+        const res = await generateDailySummaryPdf(reportData)
+        if (res && res.success) {
+          setExportSuccessDetails(res)
+        } else if (res && !res.success) {
+          alert(`Export Failed: ${res.message}`)
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert(`Export Error: ${err?.message || 'Unable to generate PDF'}`)
     } finally {
       setIsExporting(false)
     }
@@ -266,6 +280,8 @@ export function HistoryScreen({
         onConfirm={handleConfirmDateFilter}
         title="Transactions Report Period"
       />
+
+      <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
     </div>
   )
 }

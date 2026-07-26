@@ -21,6 +21,7 @@ import { InventoryScreen } from './pages/InventoryScreen'
 import { ReportsScreen } from './pages/ReportsScreen'
 import { BackupRestoreScreen } from './pages/BackupRestoreScreen'
 import { BusinessProfileScreen } from './pages/BusinessProfileScreen'
+import { CustomerHistoryScreen } from './pages/CustomerHistoryScreen'
 import { BusinessProfileSetupModal } from './components/common/BusinessProfileSetupModal'
 
 import { RouteEntity } from './database'
@@ -44,6 +45,33 @@ export default function App() {
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
   const [backupReminder, setBackupReminder] = useState<{ show: boolean; days: number }>({ show: false, days: 0 })
 
+  const loadAppData = async () => {
+    await dbInstance.initDatabase()
+
+    const prof = await businessProfileService.getProfile()
+    setBusinessProfile(prof)
+
+    const routesRes = await routeService.loadRoutes()
+    setRoutes(routesRes.routes)
+    setRouteNames(routesRes.routeNames)
+    if (routesRes.routes.length > 0) {
+      setSelectedRouteId(routesRes.routes[0].id)
+    }
+
+    const custRes = await customerService.fetchCustomersAndRoutes()
+    setCustomers(custRes.customers)
+    setRouteCustomerMap(custRes.routeCustomerMap)
+
+    const purchasesRes = await purchaseService.getAllPurchases()
+    setPurchases(purchasesRes)
+
+    const expensesRes = await expenseService.getAllExpenses()
+    setExpenses(expensesRes)
+
+    const recentRes = await recentCustomersService.getRecentCustomerIds()
+    setRecentCustomerIds(recentRes)
+  }
+
   useEffect(() => {
     const initApp = async () => {
       await dbInstance.initDatabase()
@@ -53,8 +81,7 @@ export default function App() {
       if (!isConfigured) {
         setShowSetupModal(true)
       } else {
-        const prof = await businessProfileService.getProfile()
-        setBusinessProfile(prof)
+        await loadAppData()
       }
 
       // Check Backup Health
@@ -66,26 +93,6 @@ export default function App() {
       } catch (_) {
         // Silently ignore if backup health check fails
       }
-
-      const routesRes = await routeService.loadRoutes()
-      setRoutes(routesRes.routes)
-      setRouteNames(routesRes.routeNames)
-      if (routesRes.routes.length > 0) {
-        setSelectedRouteId(routesRes.routes[0].id)
-      }
-
-      const custRes = await customerService.fetchCustomersAndRoutes()
-      setCustomers(custRes.customers)
-      setRouteCustomerMap(custRes.routeCustomerMap)
-
-      const purchasesRes = await purchaseService.getAllPurchases()
-      setPurchases(purchasesRes)
-
-      const expensesRes = await expenseService.getAllExpenses()
-      setExpenses(expensesRes)
-
-      const recentRes = await recentCustomersService.getRecentCustomerIds()
-      setRecentCustomerIds(recentRes)
     }
 
     initApp()
@@ -95,6 +102,12 @@ export default function App() {
     const updated = await businessProfileService.saveProfile(profileData)
     setBusinessProfile(updated)
     setShowSetupModal(false)
+    await loadAppData()
+  }
+
+  const handleRestoreSuccessFromSetup = async () => {
+    setShowSetupModal(false)
+    await loadAppData()
   }
 
   const navigate = (s: Screen, rId?: string, cId?: string) => {
@@ -233,6 +246,17 @@ export default function App() {
               onSave={handleSaveTransaction}
             />
           )}
+          {screen === 'customer_history' && (
+            <CustomerHistoryScreen
+              customerId={selectedCustomerId}
+              routeId={selectedRouteId}
+              customers={customers}
+              routes={routes}
+              routeNames={routeNames}
+              onBack={() => setScreen('route')}
+              onUpdateCustomer={handleUpdateCustomer}
+            />
+          )}
           {screen === 'history' && (
             <HistoryScreen
               customers={customers}
@@ -306,7 +330,10 @@ export default function App() {
 
           {/* First-Launch Setup Modal */}
           {showSetupModal && (
-            <BusinessProfileSetupModal onSave={handleSaveInitialProfile} />
+            <BusinessProfileSetupModal
+              onSave={handleSaveInitialProfile}
+              onRestoreSuccess={handleRestoreSuccessFromSetup}
+            />
           )}
 
           {/* Backup Reminder Banner */}
