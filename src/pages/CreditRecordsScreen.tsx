@@ -150,7 +150,7 @@ export function CreditRecordsScreen({
               <p className="text-xs text-gray-400 italic py-4 text-center">No transaction history found.</p>
             ) : (
               historyEntries.map(entry => {
-                const { tx, runningOutstanding, creditAdded, creditReduced, updatedOutstanding } = entry
+                const { tx, creditAdded, creditReduced, updatedOutstanding } = entry
                 const isPayment = tx.type === 'payment' || (tx.trays === 0 && tx.amountToBePaid === 0)
 
                 return (

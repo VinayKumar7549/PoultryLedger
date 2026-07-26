@@ -320,9 +320,9 @@ class BackupService {
       console.warn('[BackupService] Pre-restore snapshot creation failed:', snapErr)
     }
 
-    // ── STEP B - Perform Atomic Restoration ──
+    // ── STEP B - Perform Atomic Restoration inside ONE transaction ──
     try {
-      await dbInstance.execute('BEGIN TRANSACTION;')
+      await dbInstance.beginTransaction()
 
       // Clear existing records in reverse dependency order
       await dbInstance.execute('DELETE FROM transactions;')
@@ -332,16 +332,54 @@ class BackupService {
       await dbInstance.execute('DELETE FROM routes;')
       await dbInstance.execute('DELETE FROM settings;')
 
-      // 1. Insert Routes
-      for (const r of backupData.data.routes) {
+      const now = new Date().toISOString()
+
+      // 1. Insert Business Profile & Settings
+      const settingsMap: Map<string, { key: string; value: string; created_at: string; updated_at: string }> = new Map()
+
+      // Insert Business Profile defaults from backup metadata
+      if (backupData.metadata?.businessName) {
+        settingsMap.set('business_name', {
+          key: 'business_name',
+          value: String(backupData.metadata.businessName),
+          created_at: now,
+          updated_at: now,
+        })
+      }
+      settingsMap.set('business_profile_configured', {
+        key: 'business_profile_configured',
+        value: 'true',
+        created_at: now,
+        updated_at: now,
+      })
+
+      // Insert all settings provided in backup data
+      for (const s of backupData.data.settings || []) {
+        settingsMap.set(s.key, {
+          key: s.key,
+          value: String(s.value ?? ''),
+          created_at: s.created_at || now,
+          updated_at: s.updated_at || now,
+        })
+      }
+
+      for (const s of settingsMap.values()) {
         await dbInstance.execute(
-          'INSERT INTO routes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?);',
-          [r.id, r.name, r.created_at || new Date().toISOString(), r.updated_at || new Date().toISOString()]
+          'INSERT INTO settings (key, value, created_at, updated_at) VALUES (?, ?, ?, ?);',
+          [s.key, s.value, s.created_at, s.updated_at]
         )
       }
 
-      // 2. Insert Customers
-      for (const c of backupData.data.customers) {
+      // 2. Insert Routes
+      for (const r of backupData.data.routes || []) {
+        await dbInstance.execute(
+          'INSERT INTO routes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?);',
+          [r.id, r.name, r.created_at || now, r.updated_at || now]
+        )
+      }
+
+      // 3. Insert Customers
+      for (const c of backupData.data.customers || []) {
         await dbInstance.execute(
           'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -351,14 +389,14 @@ class BackupService {
             c.route_id,
             c.opening_credit || 0,
             c.outstanding_credit || 0,
-            c.created_at || new Date().toISOString(),
-            c.updated_at || new Date().toISOString(),
+            c.created_at || now,
+            c.updated_at || now,
           ]
         )
       }
 
-      // 3. Insert Purchases
-      for (const p of backupData.data.purchases) {
+      // 4. Insert Purchases
+      for (const p of backupData.data.purchases || []) {
         await dbInstance.execute(
           'INSERT INTO purchases (id, date, time, trays, total_eggs, egg_type, rate_per_100, total_amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -370,31 +408,14 @@ class BackupService {
             p.egg_type || 'normal',
             p.rate_per_100 || 0,
             p.total_amount || 0,
-            p.created_at || new Date().toISOString(),
-            p.updated_at || new Date().toISOString(),
-          ]
-        )
-      }
-
-      // 4. Insert Expenses
-      for (const e of backupData.data.expenses) {
-        await dbInstance.execute(
-          'INSERT INTO expenses (id, date, time, amount, purpose, payment_method, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
-          [
-            e.id,
-            e.date,
-            e.time || '',
-            e.amount || 0,
-            e.purpose || '',
-            e.payment_method || 'cash',
-            e.created_at || new Date().toISOString(),
-            e.updated_at || new Date().toISOString(),
+            p.created_at || now,
+            p.updated_at || now,
           ]
         )
       }
 
       // 5. Insert Transactions
-      for (const t of backupData.data.transactions) {
+      for (const t of backupData.data.transactions || []) {
         await dbInstance.execute(
           'INSERT INTO transactions (id, customer_id, type, date, time, trays, amount_to_be_paid, amount_paid, payment_method, credit_kept_today, credit_change, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -410,21 +431,28 @@ class BackupService {
             t.credit_kept_today || 0,
             t.credit_change || 0,
             t.notes || '',
-            t.created_at || new Date().toISOString(),
-            t.updated_at || new Date().toISOString(),
+            t.created_at || now,
+            t.updated_at || now,
           ]
         )
       }
 
-      // 6. Insert Settings
-      for (const s of backupData.data.settings || []) {
+      // 6. Insert Expenses
+      for (const e of backupData.data.expenses || []) {
         await dbInstance.execute(
-          'INSERT INTO settings (key, value, created_at, updated_at) VALUES (?, ?, ?, ?);',
-          [s.key, String(s.value ?? ''), s.created_at || new Date().toISOString(), s.updated_at || new Date().toISOString()]
+          'INSERT INTO expenses (id, date, time, amount, purpose, payment_method, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
+          [
+            e.id,
+            e.date,
+            e.time || '',
+            e.amount || 0,
+            e.purpose || '',
+            e.payment_method || 'cash',
+            e.created_at || now,
+            e.updated_at || now,
+          ]
         )
       }
-
-      await dbInstance.execute('COMMIT;')
 
       // ── STEP C - Perform Post-Restore Verification ──
       const verification = await this.verifyRestoration(validation.metadata!.recordCounts)
@@ -432,20 +460,23 @@ class BackupService {
         throw new Error(verification.error || 'Verification check failed after database restore.')
       }
 
+      // ── STEP D - Commit Transaction ──
+      await dbInstance.commitTransaction()
+
       await this.recordBackupEvent('restore')
 
       return { success: true, message: 'Restore Successful' }
     } catch (err: any) {
       const rootError = err?.message || String(err || 'Unknown database restoration error.')
-      console.error('[BackupService] Restore error encountered. Triggering automatic rollback:', rootError)
+      console.error('[BackupService] Restore error encountered. Triggering rollback:', rootError)
 
       try {
-        await dbInstance.execute('ROLLBACK;')
+        await dbInstance.rollbackTransaction()
       } catch (rollbackSqlErr) {
-        // Ignore "no current transaction" if engine already auto-rolled back
+        console.error('[BackupService] Error rolling back transaction:', rollbackSqlErr)
       }
 
-      // ── SAFETY: STEP D - Automatic Rollback to Pre-Restore Snapshot ──
+      // ── SAFETY: STEP E - Automatic Rollback to Pre-Restore Snapshot ──
       if (snapshot) {
         try {
           await this.restoreBackupWithoutSnapshot(snapshot)
@@ -470,7 +501,7 @@ class BackupService {
    */
   private async restoreBackupWithoutSnapshot(backupData: PoultryLedgerBackup): Promise<void> {
     try {
-      await dbInstance.execute('BEGIN TRANSACTION;')
+      await dbInstance.beginTransaction()
       await dbInstance.execute('DELETE FROM transactions;')
       await dbInstance.execute('DELETE FROM purchases;')
       await dbInstance.execute('DELETE FROM expenses;')
@@ -478,21 +509,23 @@ class BackupService {
       await dbInstance.execute('DELETE FROM routes;')
       await dbInstance.execute('DELETE FROM settings;')
 
-      for (const r of backupData.data.routes) {
+      const now = new Date().toISOString()
+
+      for (const r of backupData.data.routes || []) {
         await dbInstance.execute(
           'INSERT INTO routes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?);',
-          [r.id, r.name, r.created_at || new Date().toISOString(), r.updated_at || new Date().toISOString()]
+          [r.id, r.name, r.created_at || now, r.updated_at || now]
         )
       }
 
-      for (const c of backupData.data.customers) {
+      for (const c of backupData.data.customers || []) {
         await dbInstance.execute(
           'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
-          [c.id, c.name, c.subtitle || '', c.route_id, c.opening_credit || 0, c.outstanding_credit || 0, c.created_at || new Date().toISOString(), c.updated_at || new Date().toISOString()]
+          [c.id, c.name, c.subtitle || '', c.route_id, c.opening_credit || 0, c.outstanding_credit || 0, c.created_at || now, c.updated_at || now]
         )
       }
 
-      for (const p of backupData.data.purchases) {
+      for (const p of backupData.data.purchases || []) {
         await dbInstance.execute(
           'INSERT INTO purchases (id, date, time, trays, total_eggs, egg_type, rate_per_100, total_amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -504,13 +537,13 @@ class BackupService {
             p.egg_type || 'normal',
             p.rate_per_100 || 0,
             p.total_amount || 0,
-            p.created_at || new Date().toISOString(),
-            p.updated_at || new Date().toISOString(),
+            p.created_at || now,
+            p.updated_at || now,
           ]
         )
       }
 
-      for (const e of backupData.data.expenses) {
+      for (const e of backupData.data.expenses || []) {
         await dbInstance.execute(
           'INSERT INTO expenses (id, date, time, amount, purpose, payment_method, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -520,13 +553,13 @@ class BackupService {
             e.amount || 0,
             e.purpose || '',
             e.payment_method || 'cash',
-            e.created_at || new Date().toISOString(),
-            e.updated_at || new Date().toISOString(),
+            e.created_at || now,
+            e.updated_at || now,
           ]
         )
       }
 
-      for (const t of backupData.data.transactions) {
+      for (const t of backupData.data.transactions || []) {
         await dbInstance.execute(
           'INSERT INTO transactions (id, customer_id, type, date, time, trays, amount_to_be_paid, amount_paid, payment_method, credit_kept_today, credit_change, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
           [
@@ -542,8 +575,8 @@ class BackupService {
             t.credit_kept_today || 0,
             t.credit_change || 0,
             t.notes || '',
-            t.created_at || new Date().toISOString(),
-            t.updated_at || new Date().toISOString(),
+            t.created_at || now,
+            t.updated_at || now,
           ]
         )
       }
@@ -551,14 +584,14 @@ class BackupService {
       for (const s of backupData.data.settings || []) {
         await dbInstance.execute(
           'INSERT INTO settings (key, value, created_at, updated_at) VALUES (?, ?, ?, ?);',
-          [s.key, String(s.value ?? ''), s.created_at || new Date().toISOString(), s.updated_at || new Date().toISOString()]
+          [s.key, String(s.value ?? ''), s.created_at || now, s.updated_at || now]
         )
       }
 
-      await dbInstance.execute('COMMIT;')
+      await dbInstance.commitTransaction()
     } catch (err) {
       try {
-        await dbInstance.execute('ROLLBACK;')
+        await dbInstance.rollbackTransaction()
       } catch (_) {}
       throw err
     }

@@ -26,6 +26,7 @@ import { BusinessProfileSetupModal } from './components/common/BusinessProfileSe
 
 import { RouteEntity } from './database'
 import { recentCustomersService } from './services/recentCustomersService'
+import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
@@ -209,116 +210,118 @@ export default function App() {
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           }}
         >
-          {screen === 'home' && (
-            <HomeScreen
-              customers={customers}
-              expenses={expenses}
-              purchases={purchases}
-              routes={routes}
-              routeNames={routeNames}
-              recentCustomerIds={recentCustomerIds}
-              navigate={(s, r, c) => navigate(s, r, c)}
-              onCreateRoute={handleCreateRoute}
-            />
-          )}
-          {screen === 'route' && (
-            <RouteScreen
-              routeId={selectedRouteId}
-              customers={customers}
-              routeCustomers={routeCustomerMap[selectedRouteId] || []}
-              routes={routes}
-              routeNames={routeNames}
-              navigate={navigate}
-              onBack={() => setScreen('home')}
-              onSaveRouteCustomers={handleSaveRouteCustomers}
-              onDeleteCustomer={handleDeleteCustomer}
-              onCreateCustomer={handleCreateCustomer}
-              onUpdateCustomer={handleUpdateCustomer}
-              onCreateRoute={handleCreateRoute}
-              onRenameRoute={handleRenameRoute}
-              onDeleteRoute={handleDeleteRoute}
-            />
-          )}
-          {screen === 'transaction' && selectedCustomer && (
-            <TransactionScreen
-              customer={selectedCustomer}
-              onBack={() => setScreen('route')}
-              onSave={handleSaveTransaction}
-            />
-          )}
-          {screen === 'customer_history' && (
-            <CustomerHistoryScreen
-              customerId={selectedCustomerId}
-              routeId={selectedRouteId}
-              customers={customers}
-              routes={routes}
-              routeNames={routeNames}
-              onBack={() => setScreen('route')}
-              onUpdateCustomer={handleUpdateCustomer}
-            />
-          )}
-          {screen === 'history' && (
-            <HistoryScreen
-              customers={customers}
-              historyDate={historyDate}
-              setHistoryDate={setHistoryDate}
-              onMenuOpen={() => setShowMenu(true)}
-            />
-          )}
-          {screen === 'credit' && (
-            <CreditRecordsScreen
-              customers={customers}
-              routeCustomerMap={routeCustomerMap}
-              onMenuOpen={() => setShowMenu(true)}
-              routeNames={routeNames}
-            />
-          )}
-          {screen === 'expenses' && (
-            <AddExpenseScreen
-              onBack={() => setScreen('home')}
-              onSaveExpense={handleSaveExpense}
-            />
-          )}
-          {screen === 'expenseHistory' && (
-            <ExpenseHistoryScreen
-              expenses={expenses}
-              expenseDate={expenseDate}
-              setExpenseDate={setExpenseDate}
-              onMenuOpen={() => setShowMenu(true)}
-              onAddExpense={() => navigate('expenses')}
-            />
-          )}
-          {screen === 'inventory' && (
-            <InventoryScreen
-              customers={customers}
-              purchases={purchases}
-              onMenuOpen={() => setShowMenu(true)}
-              onSavePurchase={handleSavePurchase}
-              onUpdatePurchase={handleUpdatePurchase}
-              onDeletePurchase={handleDeletePurchase}
-            />
-          )}
-          {screen === 'reports' && (
-            <ReportsScreen
-              customers={customers}
-              expenses={expenses}
-              purchases={purchases}
-              onMenuOpen={() => setShowMenu(true)}
-              routeNames={routeNames}
-            />
-          )}
+          <ErrorBoundary key={screen} onReset={() => setScreen('home')}>
+            {screen === 'home' && (
+              <HomeScreen
+                customers={customers}
+                expenses={expenses}
+                purchases={purchases}
+                routes={routes}
+                routeNames={routeNames}
+                recentCustomerIds={recentCustomerIds}
+                navigate={(s, r, c) => navigate(s, r, c)}
+                onCreateRoute={handleCreateRoute}
+              />
+            )}
+            {screen === 'route' && (
+              <RouteScreen
+                routeId={selectedRouteId}
+                customers={customers}
+                routeCustomers={routeCustomerMap[selectedRouteId] || []}
+                routes={routes}
+                routeNames={routeNames}
+                navigate={navigate}
+                onBack={() => setScreen('home')}
+                onSaveRouteCustomers={handleSaveRouteCustomers}
+                onDeleteCustomer={handleDeleteCustomer}
+                onCreateCustomer={handleCreateCustomer}
+                onUpdateCustomer={handleUpdateCustomer}
+                onCreateRoute={handleCreateRoute}
+                onRenameRoute={handleRenameRoute}
+                onDeleteRoute={handleDeleteRoute}
+              />
+            )}
+            {screen === 'transaction' && selectedCustomer && (
+              <TransactionScreen
+                customer={selectedCustomer}
+                onBack={() => setScreen('route')}
+                onSave={handleSaveTransaction}
+              />
+            )}
+            {screen === 'customer_history' && (
+              <CustomerHistoryScreen
+                customerId={selectedCustomerId}
+                routeId={selectedRouteId}
+                customers={customers}
+                routes={routes}
+                routeNames={routeNames}
+                onBack={() => setScreen('route')}
+                onUpdateCustomer={handleUpdateCustomer}
+              />
+            )}
+            {screen === 'history' && (
+              <HistoryScreen
+                customers={customers}
+                historyDate={historyDate}
+                setHistoryDate={setHistoryDate}
+                onMenuOpen={() => setShowMenu(true)}
+              />
+            )}
+            {screen === 'credit' && (
+              <CreditRecordsScreen
+                customers={customers}
+                routeCustomerMap={routeCustomerMap}
+                onMenuOpen={() => setShowMenu(true)}
+                routeNames={routeNames}
+              />
+            )}
+            {screen === 'expenses' && (
+              <AddExpenseScreen
+                onBack={() => setScreen('home')}
+                onSaveExpense={handleSaveExpense}
+              />
+            )}
+            {screen === 'expenseHistory' && (
+              <ExpenseHistoryScreen
+                expenses={expenses}
+                expenseDate={expenseDate}
+                setExpenseDate={setExpenseDate}
+                onMenuOpen={() => setShowMenu(true)}
+                onAddExpense={() => navigate('expenses')}
+              />
+            )}
+            {screen === 'inventory' && (
+              <InventoryScreen
+                customers={customers}
+                purchases={purchases}
+                onMenuOpen={() => setShowMenu(true)}
+                onSavePurchase={handleSavePurchase}
+                onUpdatePurchase={handleUpdatePurchase}
+                onDeletePurchase={handleDeletePurchase}
+              />
+            )}
+            {screen === 'reports' && (
+              <ReportsScreen
+                customers={customers}
+                expenses={expenses}
+                purchases={purchases}
+                onMenuOpen={() => setShowMenu(true)}
+                routeNames={routeNames}
+              />
+            )}
 
-          {screen === 'backup' && (
-            <BackupRestoreScreen
-              onMenuOpen={() => setShowMenu(true)}
-            />
-          )}
-          {screen === 'profile' && (
-            <BusinessProfileScreen
-              onMenuOpen={() => setShowMenu(true)}
-              onProfileUpdated={prof => setBusinessProfile(prof)}
-            />
-          )}
+            {screen === 'backup' && (
+              <BackupRestoreScreen
+                onMenuOpen={() => setShowMenu(true)}
+              />
+            )}
+            {screen === 'profile' && (
+              <BusinessProfileScreen
+                onMenuOpen={() => setShowMenu(true)}
+                onProfileUpdated={prof => setBusinessProfile(prof)}
+              />
+            )}
+          </ErrorBoundary>
 
           {/* Side Menu */}
           <SideMenu

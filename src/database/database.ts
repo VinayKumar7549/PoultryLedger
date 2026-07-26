@@ -15,6 +15,8 @@ class WebInMemoryDB {
   }
   private initialized = false
 
+  private snapshot: Record<string, any[]> | null = null
+
   init() {
     if (this.initialized) return
     const saved = localStorage.getItem('poultryledger_web_db')
@@ -30,6 +32,24 @@ class WebInMemoryDB {
 
   save() {
     localStorage.setItem('poultryledger_web_db', JSON.stringify(this.tables))
+  }
+
+  beginTransaction() {
+    this.init()
+    this.snapshot = JSON.parse(JSON.stringify(this.tables))
+  }
+
+  commitTransaction() {
+    this.snapshot = null
+    this.save()
+  }
+
+  rollbackTransaction() {
+    if (this.snapshot) {
+      this.tables = JSON.parse(JSON.stringify(this.snapshot))
+      this.snapshot = null
+      this.save()
+    }
   }
 
   getTable(name: string): any[] {
@@ -383,6 +403,7 @@ class Database {
   private db: SQLiteDBConnection | null = null
   private isInitialized = false
   private initPromise: Promise<boolean> | null = null
+  private inTransaction = false
 
   async initDatabase(): Promise<boolean> {
     if (this.isInitialized) return true
@@ -446,11 +467,90 @@ class Database {
     }
   }
 
-  async execute(statement: string, values: any[] = []): Promise<any> {
+  async beginTransaction(): Promise<void> {
+    await this.initDatabase()
+    if (this.inTransaction) {
+      console.warn('[DB] Transaction already in progress. Skipping nested transaction.')
+      return
+    }
+
+    if (Capacitor.isNativePlatform()) {
+      if (this.db) {
+        const isTx = await this.db.isTransactionActive()
+        if (!isTx.result) {
+          await this.db.beginTransaction()
+        }
+      }
+    } else {
+      webDbInstance.beginTransaction()
+    }
+    this.inTransaction = true
+  }
+
+  async commitTransaction(): Promise<void> {
+    await this.initDatabase()
+    if (!this.inTransaction) {
+      console.warn('[DB] No active transaction to commit.')
+      return
+    }
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        if (this.db) {
+          const isTx = await this.db.isTransactionActive()
+          if (isTx.result) {
+            await this.db.commitTransaction()
+          }
+        }
+      } else {
+        webDbInstance.commitTransaction()
+      }
+    } finally {
+      this.inTransaction = false
+    }
+  }
+
+  async rollbackTransaction(): Promise<void> {
+    await this.initDatabase()
+    if (!this.inTransaction) {
+      console.warn('[DB] No active transaction to rollback.')
+      return
+    }
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        if (this.db) {
+          const isTx = await this.db.isTransactionActive()
+          if (isTx.result) {
+            await this.db.rollbackTransaction()
+          }
+        }
+      } else {
+        webDbInstance.rollbackTransaction()
+      }
+    } finally {
+      this.inTransaction = false
+    }
+  }
+
+  async isTransactionActive(): Promise<boolean> {
+    if (!this.inTransaction) return false
+    if (Capacitor.isNativePlatform()) {
+      if (!this.db) return false
+      const res = await this.db.isTransactionActive()
+      return Boolean(res.result)
+    }
+    return this.inTransaction
+  }
+
+  async execute(statement: string, values: any[] = [], transaction?: boolean): Promise<any> {
     await this.initDatabase()
     if (Capacitor.isNativePlatform()) {
       if (!this.db) return null
-      return await this.db.run(statement, values)
+      // When inside an active manual transaction block, pass transaction = false to db.run
+      // so @capacitor-community/sqlite does not attempt to create nested transactions.
+      const usePluginTx = transaction !== undefined ? transaction : !this.inTransaction
+      return await this.db.run(statement, values, usePluginTx)
     }
     return webDbInstance.execute(statement, values)
   }
