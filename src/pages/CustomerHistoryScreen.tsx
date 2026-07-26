@@ -203,14 +203,12 @@ export function CustomerHistoryScreen({
         throw new Error('Could not load statement report data.')
       }
 
-      const pdfDoc = await generateCustomerStatementPdf(statement)
-      const filename = fileService.formatPdfFilename(customer.name, 'Statement')
-      const result = await fileService.savePdf(pdfDoc, filename, `${customer.name} Statement`)
+      const result = await generateCustomerStatementPdf(statement)
 
-      if (result.success) {
+      if (result && result.success) {
         setExportModalDetails(result)
       } else {
-        alert(result.message || 'Failed to export PDF.')
+        alert(result?.message || 'Failed to export PDF.')
       }
     } catch (err: any) {
       console.error('[CustomerHistoryScreen] PDF Export error:', err)

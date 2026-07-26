@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { BusinessProfile } from '../../types'
 import { fileService } from '../../services/fileService'
 import { backupService, PoultryLedgerBackup } from '../../services/backupService'
+import { IconBrandLogoBadge } from './Icons'
 
 export function BusinessProfileSetupModal({
   onSave,
@@ -119,12 +120,10 @@ export function BusinessProfileSetupModal({
 
       <div className="bg-white rounded-3xl p-6 max-w-md w-full flex flex-col gap-4 shadow-2xl border border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-bold">
-            🐔
-          </div>
+          <IconBrandLogoBadge size="lg" />
           <div>
             <h2 className="text-lg font-extrabold text-gray-900">Welcome to PoultryLedger</h2>
-            <p className="text-xs text-gray-500 font-medium">Get started with your offline shop manager</p>
+            <p className="text-xs text-gray-500 font-medium">The Smart Ledger for Egg Wholesalers & Distributors</p>
           </div>
         </div>
 

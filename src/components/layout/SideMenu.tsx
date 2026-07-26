@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Screen, BusinessProfile } from '../../types'
 import { businessProfileService } from '../../services/businessProfileService'
-import { IconEgg, IconClose, IconList, IconCreditCard, IconWallet, IconBox, IconHistory } from '../common/Icons'
+import { IconBrandLogoBadge, IconClose, IconList, IconCreditCard, IconWallet, IconBox, IconHistory } from '../common/Icons'
 
 export function SideMenu({
   visible,
@@ -15,6 +15,7 @@ export function SideMenu({
   currentScreen: Screen
 }) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
+  const [showAbout, setShowAbout] = useState(false)
 
   useEffect(() => {
     if (visible) {
@@ -30,7 +31,7 @@ export function SideMenu({
           screen: 'home' as Screen,
           label: 'Home',
           subLabel: 'Today’s deliveries & overview',
-          icon: <IconEgg />,
+          icon: <IconBrandLogoBadge size="sm" />,
         },
         {
           screen: 'history' as Screen,
@@ -118,18 +119,18 @@ export function SideMenu({
         {/* Menu Header */}
         <div className="flex items-center justify-between px-5 pt-8 pb-5 border-b border-gray-100 bg-slate-900 text-white">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-emerald-600 text-white shadow-md">
-              <div style={{ transform: 'scale(0.85)' }}>
-                <IconEgg />
-              </div>
-            </div>
+            <IconBrandLogoBadge size="md" />
             <div className="overflow-hidden max-w-[170px]">
-              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider truncate">
-                {profile?.ownerName ? `Prop: ${profile.ownerName}` : 'Shop Ledger'}
-              </p>
-              <p className="text-base font-extrabold text-white truncate">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-extrabold text-white truncate">PoultryLedger</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v1.0</span>
+              </div>
+              <p className="text-[11px] font-semibold text-emerald-400 truncate mt-0.5">
                 {profile?.businessName || 'Sai Egg Center'}
               </p>
+              {profile?.ownerName && (
+                <p className="text-[10px] text-gray-400 truncate">Prop: {profile.ownerName}</p>
+              )}
             </div>
           </div>
           <button
@@ -190,11 +191,48 @@ export function SideMenu({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
-          <p className="text-[11px] font-bold text-gray-700">🐔 PoultryLedger App</p>
-          <p className="text-[10px] text-gray-400 font-medium mt-0.5">100% Offline & Safe Shop Register</p>
+        <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <IconBrandLogoBadge size="sm" />
+            <div>
+              <p className="text-xs font-extrabold text-gray-900 leading-tight">PoultryLedger</p>
+              <p className="text-[10px] text-gray-500 font-medium">The Smart Egg Ledger</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAbout(true)}
+            className="px-2.5 py-1 rounded-xl bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-100 active:scale-95 transition-all shadow-2xs"
+          >
+            About
+          </button>
         </div>
       </div>
+
+      {/* About Modal */}
+      {showAbout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col items-center text-center gap-4 shadow-2xl border border-gray-100">
+            <IconBrandLogoBadge size="xl" />
+            <div>
+              <h2 className="text-xl font-black text-gray-900">PoultryLedger</h2>
+              <p className="text-xs font-bold text-emerald-600 mt-0.5">The Smart Egg Ledger • v1.0.0</p>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed font-medium bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              Offline business ledger app designed specifically for egg wholesalers, poultry distributors, and retail shop owners to track sales, Udhar credit, inventory & bills.
+            </p>
+            <div className="w-full text-[11px] text-gray-400 border-t border-gray-100 pt-3 flex items-center justify-between">
+              <span>100% Offline & Private</span>
+              <span>© 2026 PoultryLedger</span>
+            </div>
+            <button
+              onClick={() => setShowAbout(false)}
+              className="w-full py-3 bg-emerald-600 text-white font-extrabold text-xs rounded-2xl shadow-md hover:bg-emerald-700 active:scale-98 transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

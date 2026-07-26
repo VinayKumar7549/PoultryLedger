@@ -23,6 +23,13 @@ export interface PickFileResult<T = any> {
   message?: string
 }
 
+export type ReportCategory =
+  | 'Customer Statements'
+  | 'Daily Sales'
+  | 'Credit Reports'
+  | 'Inventory'
+  | 'Expenses'
+
 class FileService {
   /**
    * Check if current environment is native Android
@@ -55,8 +62,13 @@ class FileService {
    * Automatically creates the required application directory tree:
    * Documents/
    * └── PoultryLedger/
-   *     ├── Reports/
-   *     └── Backups/
+   *     ├── Backups/
+   *     └── Reports/
+   *         ├── Customer Statements/
+   *         ├── Daily Sales/
+   *         ├── Credit Reports/
+   *         ├── Inventory/
+   *         └── Expenses/
    */
   async ensureDirectoryStructure(): Promise<void> {
     if (!this.isAndroid()) return
@@ -64,8 +76,13 @@ class FileService {
 
     const directories = [
       'PoultryLedger',
-      'PoultryLedger/Reports',
       'PoultryLedger/Backups',
+      'PoultryLedger/Reports',
+      'PoultryLedger/Reports/Customer Statements',
+      'PoultryLedger/Reports/Daily Sales',
+      'PoultryLedger/Reports/Credit Reports',
+      'PoultryLedger/Reports/Inventory',
+      'PoultryLedger/Reports/Expenses',
     ]
 
     for (const dirPath of directories) {
@@ -76,7 +93,7 @@ class FileService {
           recursive: true,
         })
       } catch (err: any) {
-        // Ignore folder creation errors if directory already exists
+        // Folder exists or creation handled
       }
     }
   }
@@ -112,11 +129,15 @@ class FileService {
   }
 
   /**
-   * Generate & Save PDF file directly to Internal Storage (Documents/PoultryLedger/Reports/)
-   * Web: Triggers browser file download
-   * Android: Creates directories, writes file silently, and verifies disk presence & size > 0
+   * Generate & Save PDF file directly to Internal Storage in specific Category Subfolder
+   * Documents/PoultryLedger/Reports/<Category>/<filename>
    */
-  async savePdf(pdfDoc: jsPDF, filename: string, title: string = 'PoultryLedger Report'): Promise<FileActionResult> {
+  async savePdf(
+    pdfDoc: jsPDF,
+    filename: string,
+    title: string = 'PoultryLedger Report',
+    category: ReportCategory = 'Daily Sales'
+  ): Promise<FileActionResult> {
     try {
       const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -126,7 +147,7 @@ class FileService {
         return {
           success: true,
           filename,
-          folderLocation: 'Downloads (Browser)',
+          folderLocation: `Downloads / Reports / ${category}`,
           creationTime: nowStr,
           message: `PDF exported successfully: ${filename}`,
         }
@@ -135,11 +156,23 @@ class FileService {
       // ANDROID BEHAVIOR: Ensure Directory Structure
       await this.ensureDirectoryStructure()
 
+      const categoryDir = `PoultryLedger/Reports/${category}`
+      const relativePath = `${categoryDir}/${filename}`
+
+      // Pre-write folder verification / creation
+      try {
+        await Filesystem.mkdir({
+          path: categoryDir,
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // Folder exists
+      }
+
       // Extract base64 representation of PDF
       const dataUri = pdfDoc.output('datauristring')
       const base64Data = dataUri.split(',')[1]
-
-      const relativePath = `PoultryLedger/Reports/${filename}`
 
       const saveRes = await Filesystem.writeFile({
         path: relativePath,
@@ -148,25 +181,27 @@ class FileService {
         recursive: true,
       })
 
-      // POST-WRITE DISK VERIFICATION
+      // POST-WRITE DISK VERIFICATION: Check presence & file size > 0
       const statRes = await Filesystem.stat({
         path: relativePath,
         directory: Directory.Documents,
       })
 
-      if (!statRes || statRes.size <= 0) {
-        throw new Error('Verification failed: PDF file was not created on disk or is 0 bytes.')
+      if (!statRes || !statRes.size || statRes.size <= 0) {
+        throw new Error(`Disk verification failed: File was not created or is 0 bytes at ${relativePath}`)
       }
+
+      const folderLocationDisplay = `Documents/PoultryLedger/Reports/${category}/`
 
       return {
         success: true,
         filename,
-        folderLocation: 'Documents/PoultryLedger/Reports/',
+        folderLocation: folderLocationDisplay,
         fullPath: statRes.uri || saveRes.uri,
         uri: saveRes.uri,
         fileSize: statRes.size,
         creationTime: nowStr,
-        message: `PDF saved successfully to Documents/PoultryLedger/Reports/${filename}`,
+        message: `PDF saved and verified: ${folderLocationDisplay}${filename}`,
       }
     } catch (err: any) {
       console.error('[FileService] Error saving PDF:', err)

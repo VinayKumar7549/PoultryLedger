@@ -148,3 +148,43 @@ export const IconPdf = () => (
   </svg>
 )
 
+export const IconBrandLogo = ({ className = "w-6 h-6", color = "currentColor" }: { className?: string; color?: string }) => (
+  <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Minimalist Premium Egg Shape */}
+    <path
+      d="M16 3C9.8 3 5 11.8 5 19.5C5 25.3 9.9 30 16 30C22.1 30 27 25.3 27 19.5C27 11.8 22.2 3 16 3Z"
+      fill={color}
+      fillOpacity="0.15"
+      stroke={color}
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    {/* Integrated Ledger Growth Bar Chart & Checkmark */}
+    <path d="M11 20L14.5 23.5L21.5 13.5" stroke={color} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="10" y1="16" x2="14" y2="16" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+    <line x1="18" y1="18" x2="22" y2="18" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+  </svg>
+)
+
+export const IconBrandLogoBadge = ({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) => {
+  const sizeMap = {
+    sm: "w-8 h-8 rounded-xl",
+    md: "w-10 h-10 rounded-2xl",
+    lg: "w-14 h-14 rounded-2xl",
+    xl: "w-20 h-20 rounded-3xl",
+  }
+  const iconSizeMap = {
+    sm: "w-5 h-5",
+    md: "w-6 h-6",
+    lg: "w-9 h-9",
+    xl: "w-12 h-12",
+  }
+
+  return (
+    <div className={`${sizeMap[size]} bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center shadow-md border border-emerald-400/30 flex-shrink-0`}>
+      <IconBrandLogo className={iconSizeMap[size]} color="white" />
+    </div>
+  )
+}
+
+

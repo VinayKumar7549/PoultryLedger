@@ -12,10 +12,12 @@ export interface RecordCounts {
 }
 
 export interface BackupMetadata {
+  applicationName?: string
   applicationVersion: string
   databaseSchemaVersion: number
   backupTimestamp: string
   businessName: string
+  generatedBy?: string
   recordCounts: RecordCounts
 }
 
@@ -100,10 +102,12 @@ class BackupService {
     }
 
     const metadata: BackupMetadata = {
+      applicationName: 'PoultryLedger',
       applicationVersion: this.CURRENT_APP_VERSION,
       databaseSchemaVersion: this.CURRENT_SCHEMA_VERSION,
       backupTimestamp: new Date().toISOString(),
       businessName,
+      generatedBy: 'PoultryLedger v1.0.0',
       recordCounts,
     }
 
