@@ -12,7 +12,7 @@ export type Screen =
   | 'backup'
   | 'profile'
 
-export type PaymentMethod = 'cash' | 'gpay'
+export type PaymentMethod = 'cash' | 'online' | 'gpay'
 
 export type EggType = 'normal' | 'damaged'
 
@@ -69,5 +69,6 @@ export interface BusinessProfile {
   phoneNumber?: string
   address?: string
   businessLogo?: string
+  paymentQrCode?: string
   configured: boolean
 }

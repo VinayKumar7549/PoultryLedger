@@ -59,25 +59,51 @@ class FileService {
   }
 
   /**
-   * Automatically creates the required application directory tree:
+   * Explicitly verifies and creates the master root directory 'PoultryLedger' under Documents
+   */
+  async ensureRootDirectoryExists(): Promise<void> {
+    if (!this.isAndroid()) return
+    await this.ensureStoragePermissions()
+
+    try {
+      await Filesystem.mkdir({
+        path: 'PoultryLedger',
+        directory: Directory.Documents,
+        recursive: true,
+      })
+    } catch {
+      // Directory exists
+    }
+  }
+
+  /**
+   * Automatically creates the required application directory tree inside Documents/PoultryLedger/:
    * Documents/
    * └── PoultryLedger/
    *     ├── Backups/
-   *     └── Reports/
-   *         ├── Customer Statements/
-   *         ├── Daily Sales/
-   *         ├── Credit Reports/
-   *         ├── Inventory/
-   *         └── Expenses/
+   *     ├── Reports/
+   *     ├── Customer Statements/
+   *     ├── Daily Sales/
+   *     ├── Credit Reports/
+   *     ├── Inventory/
+   *     └── Expenses/
    */
   async ensureDirectoryStructure(): Promise<void> {
     if (!this.isAndroid()) return
     await this.ensureStoragePermissions()
 
+    // 1. First ensure root PoultryLedger directory exists
+    await this.ensureRootDirectoryExists()
+
+    // 2. Ensure all subdirectories are explicitly prefixed with PoultryLedger/
     const directories = [
-      'PoultryLedger',
       'PoultryLedger/Backups',
       'PoultryLedger/Reports',
+      'PoultryLedger/Customer Statements',
+      'PoultryLedger/Daily Sales',
+      'PoultryLedger/Credit Reports',
+      'PoultryLedger/Inventory',
+      'PoultryLedger/Expenses',
       'PoultryLedger/Reports/Customer Statements',
       'PoultryLedger/Reports/Daily Sales',
       'PoultryLedger/Reports/Credit Reports',
@@ -92,7 +118,7 @@ class FileService {
           directory: Directory.Documents,
           recursive: true,
         })
-      } catch (err: any) {
+      } catch {
         // Folder exists or creation handled
       }
     }
@@ -129,8 +155,15 @@ class FileService {
   }
 
   /**
-   * Generate & Save PDF file directly to Internal Storage in specific Category Subfolder
-   * Documents/PoultryLedger/Reports/<Category>/<filename>
+   * Generate & Save PDF file directly to Internal Storage inside Documents/PoultryLedger/<Category>/
+   * 
+   * Strict 6-Step Execution Flow:
+   * 1. Verify 'PoultryLedger' root directory exists (if not, create it)
+   * 2. Verify required subfolder inside 'PoultryLedger' exists (if not, create it)
+   * 3. Extract base64 and write file to Documents/PoultryLedger/<Category>/<filename>
+   * 4. Verify file exists on disk
+   * 5. Verify file size > 0
+   * 6. Display success modal with verified dynamic path
    */
   async savePdf(
     pdfDoc: jsPDF,
@@ -147,33 +180,39 @@ class FileService {
         return {
           success: true,
           filename,
-          folderLocation: `Downloads / Reports / ${category}`,
+          folderLocation: `Downloads / PoultryLedger / ${category}`,
           creationTime: nowStr,
           message: `PDF exported successfully: ${filename}`,
         }
       }
 
-      // ANDROID BEHAVIOR: Ensure Directory Structure
+      // STEP 1 & 2: VERIFY & CREATE ROOT 'PoultryLedger' AND SUBFOLDERS
+      await this.ensureRootDirectoryExists()
       await this.ensureDirectoryStructure()
 
-      const categoryDir = `PoultryLedger/Reports/${category}`
-      const relativePath = `${categoryDir}/${filename}`
+      const categoryDir = `PoultryLedger/${category}`
+      const reportsCategoryDir = `PoultryLedger/Reports/${category}`
 
-      // Pre-write folder verification / creation
-      try {
-        await Filesystem.mkdir({
-          path: categoryDir,
-          directory: Directory.Documents,
-          recursive: true,
-        })
-      } catch {
-        // Folder exists
+      // Pre-write target folder verification / creation
+      for (const targetDir of [categoryDir, reportsCategoryDir]) {
+        try {
+          await Filesystem.mkdir({
+            path: targetDir,
+            directory: Directory.Documents,
+            recursive: true,
+          })
+        } catch {
+          // Folder exists
+        }
       }
 
       // Extract base64 representation of PDF
       const dataUri = pdfDoc.output('datauristring')
       const base64Data = dataUri.split(',')[1]
 
+      const relativePath = `${categoryDir}/${filename}`
+
+      // STEP 3: WRITE FILE TO DISK
       const saveRes = await Filesystem.writeFile({
         path: relativePath,
         data: base64Data,
@@ -181,7 +220,19 @@ class FileService {
         recursive: true,
       })
 
-      // POST-WRITE DISK VERIFICATION: Check presence & file size > 0
+      // Secondary convenience mirror under Reports/
+      try {
+        await Filesystem.writeFile({
+          path: `${reportsCategoryDir}/${filename}`,
+          data: base64Data,
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // Mirrored copy handled
+      }
+
+      // STEP 4 & 5: DISK VERIFICATION - Check presence & file size > 0
       const statRes = await Filesystem.stat({
         path: relativePath,
         directory: Directory.Documents,
@@ -191,8 +242,9 @@ class FileService {
         throw new Error(`Disk verification failed: File was not created or is 0 bytes at ${relativePath}`)
       }
 
-      const folderLocationDisplay = `Documents/PoultryLedger/Reports/${category}/`
+      const folderLocationDisplay = `Documents/PoultryLedger/${category}/`
 
+      // STEP 6: RETURN VERIFIED SUCCESS RESULT
       return {
         success: true,
         filename,
@@ -214,8 +266,14 @@ class FileService {
 
   /**
    * Save Database Backup JSON file directly to Internal Storage (Documents/PoultryLedger/Backups/)
-   * Web: Triggers browser JSON file download
-   * Android: Creates directories, writes file silently, and verifies disk presence & size > 0
+   * 
+   * Strict 6-Step Execution Flow:
+   * 1. Verify 'PoultryLedger' root directory exists (if not, create it)
+   * 2. Verify 'Backups' subfolder inside 'PoultryLedger' exists (if not, create it)
+   * 3. Write backup JSON to Documents/PoultryLedger/Backups/<filename>
+   * 4. Verify file exists on disk
+   * 5. Verify file size > 0
+   * 6. Return verified success result
    */
   async saveBackupJson(backupData: any, filename: string): Promise<FileActionResult> {
     try {
@@ -237,18 +295,30 @@ class FileService {
         return {
           success: true,
           filename,
-          folderLocation: 'Downloads (Browser)',
+          folderLocation: 'Downloads / PoultryLedger / Backups',
           fileSize: blob.size,
           creationTime: nowStr,
           message: `Backup JSON downloaded successfully: ${filename}`,
         }
       }
 
-      // ANDROID BEHAVIOR: Ensure Directory Structure
-      await this.ensureDirectoryStructure()
+      // STEP 1 & 2: VERIFY & CREATE ROOT 'PoultryLedger' AND 'Backups' SUBFOLDER
+      await this.ensureRootDirectoryExists()
 
-      const relativePath = `PoultryLedger/Backups/${filename}`
+      const backupDir = 'PoultryLedger/Backups'
+      try {
+        await Filesystem.mkdir({
+          path: backupDir,
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // Folder exists
+      }
 
+      const relativePath = `${backupDir}/${filename}`
+
+      // STEP 3: WRITE BACKUP FILE TO DISK
       const saveRes = await Filesystem.writeFile({
         path: relativePath,
         data: jsonStr,
@@ -257,25 +327,28 @@ class FileService {
         recursive: true,
       })
 
-      // POST-WRITE DISK VERIFICATION
+      // STEP 4 & 5: DISK VERIFICATION - Check presence & file size > 0
       const statRes = await Filesystem.stat({
         path: relativePath,
         directory: Directory.Documents,
       })
 
-      if (!statRes || statRes.size <= 0) {
+      if (!statRes || !statRes.size || statRes.size <= 0) {
         throw new Error('Verification failed: Database backup file was not created on disk or is 0 bytes.')
       }
 
+      const folderLocationDisplay = 'Documents/PoultryLedger/Backups/'
+
+      // STEP 6: RETURN VERIFIED SUCCESS RESULT
       return {
         success: true,
         filename,
-        folderLocation: 'Documents/PoultryLedger/Backups/',
+        folderLocation: folderLocationDisplay,
         fullPath: statRes.uri || saveRes.uri,
         uri: saveRes.uri,
         fileSize: statRes.size,
         creationTime: nowStr,
-        message: `Backup completed successfully: Documents/PoultryLedger/Backups/${filename}`,
+        message: `Backup completed successfully: ${folderLocationDisplay}${filename}`,
       }
     } catch (err: any) {
       console.error('[FileService] Error saving Backup JSON:', err)

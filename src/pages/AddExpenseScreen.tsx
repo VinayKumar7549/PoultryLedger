@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import { Expense, PaymentMethod } from '../types'
+import { useState, useEffect } from 'react'
+import { Expense, PaymentMethod, BusinessProfile } from '../types'
 import { today, getTime, uid } from '../utils/date'
 import { IconBack } from '../components/common/Icons'
+import { businessProfileService } from '../services/businessProfileService'
+import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
 export function AddExpenseScreen({
   onBack,
@@ -15,6 +17,11 @@ export function AddExpenseScreen({
   const [purpose, setPurpose] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [savedMsg, setSavedMsg] = useState('')
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
+
+  useEffect(() => {
+    businessProfileService.getProfile().then(setBusinessProfile)
+  }, [])
 
   const amountVal = parseFloat(amountSpent) || 0
 
@@ -31,71 +38,79 @@ export function AddExpenseScreen({
     }
 
     onSaveExpense(newExpense)
-    setSavedMsg('Expense Saved!')
+    setSavedMsg('Expense saved successfully!')
     setTimeout(() => {
-      setSavedMsg('')
       onBack()
-    }, 1200)
+    }, 600)
   }
 
   return (
     <div className="flex flex-col h-full bg-white relative">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: '#f3f4f6' }}>
-        <button onClick={onBack} className="w-10 h-10 rounded-full flex items-center justify-center active:bg-gray-100" style={{ color: '#111827' }}>
-          <IconBack />
-        </button>
-        <div className="flex-1">
-          <h2 className="text-lg font-800" style={{ fontWeight: 800, color: '#111827' }}>Add Expense</h2>
-          <p className="text-xs" style={{ color: '#6b7280' }}>Record daily business expense</p>
+      {/* AppBar */}
+      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <IconBack />
+          </button>
+          <h1 className="text-xl font-800 text-gray-900">Record Business Expense</h1>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
-        {/* Expense Card */}
-        <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb' }}>
-          {/* Expense Date */}
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
+        <div className="flex flex-col gap-4">
+
+          {savedMsg && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-700 flex items-center gap-2 shadow-xs">
+              <span>✓</span>
+              <span>{savedMsg}</span>
+            </div>
+          )}
+
+          {/* Date Picker */}
           <div>
-            <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Expense Date</label>
+            <label className="text-xs font-600 mb-1 block text-gray-600">Expense Date</label>
             <input
               type="date"
-              max={today}
               value={expenseDate}
               onChange={e => setExpenseDate(e.target.value)}
               className="w-full rounded-xl px-3.5 py-3 text-sm font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-              style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+              style={{ borderColor: '#e5e7eb', color: '#111827', fontWeight: 700 }}
             />
           </div>
 
-          {/* Amount Spent */}
+          {/* Purpose */}
           <div>
-            <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Amount Spent (₹)</label>
-            <input
-              type="number"
-              value={amountSpent}
-              onChange={e => setAmountSpent(e.target.value)}
-              placeholder="e.g. 350"
-              className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-              style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
-            />
-          </div>
-
-          {/* Purpose / Description */}
-          <div>
-            <label className="text-xs font-600 mb-1 block" style={{ color: '#6b7280', fontWeight: 600 }}>Purpose / Description</label>
+            <label className="text-xs font-600 mb-1 block text-gray-600">Expense Reason / Category</label>
             <input
               type="text"
               value={purpose}
               onChange={e => setPurpose(e.target.value)}
-              placeholder="e.g. Vehicle Fuel (Petrol), Tea & Snacks"
-              className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
-              style={{ borderColor: '#d1fae5', color: '#111827', fontWeight: 700 }}
+              placeholder="e.g. Vehicle Fuel, Shop Rent, Egg Trays"
+              className="w-full rounded-xl px-3.5 py-3 text-sm font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+              style={{ borderColor: '#e5e7eb', color: '#111827', fontWeight: 700 }}
             />
           </div>
 
-          {/* Payment Method */}
+          {/* Amount */}
           <div>
-            <label className="text-xs font-600 mb-1.5 block" style={{ color: '#6b7280', fontWeight: 600 }}>Payment Method</label>
+            <label className="text-xs font-600 mb-1 block text-gray-600">Amount Spent (₹)</label>
+            <input
+              type="number"
+              value={amountSpent}
+              onChange={e => setAmountSpent(e.target.value)}
+              placeholder="e.g. 500"
+              className="w-full rounded-xl px-3.5 py-3 text-base font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
+              style={{ borderColor: '#e5e7eb', color: '#111827', fontWeight: 700 }}
+            />
+          </div>
+
+          {/* Payment Method Toggle */}
+          <div>
+            <label className="text-xs font-600 mb-1.5 block text-gray-600">Payment Method</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -112,18 +127,28 @@ export function AddExpenseScreen({
               </button>
               <button
                 type="button"
-                onClick={() => setPaymentMethod('gpay')}
+                onClick={() => setPaymentMethod('online')}
                 className="py-3 rounded-xl text-sm font-700 transition-all border"
                 style={{
-                  background: paymentMethod === 'gpay' ? '#059669' : 'white',
-                  color: paymentMethod === 'gpay' ? 'white' : '#374151',
-                  borderColor: paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
+                  background: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : 'white',
+                  color: paymentMethod === 'online' || paymentMethod === 'gpay' ? 'white' : '#374151',
+                  borderColor: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
                   fontWeight: 700,
                 }}
               >
-                📱 GPay
+                🌐 Online
               </button>
             </div>
+
+            {/* Instant QR Code Display when Online selected */}
+            {(paymentMethod === 'online' || paymentMethod === 'gpay') && (
+              <PaymentQrCodeDisplay
+                businessProfile={businessProfile}
+                onProfileUpdated={setBusinessProfile}
+                showTitle={false}
+                compact={true}
+              />
+            )}
           </div>
         </div>
 
@@ -138,7 +163,7 @@ export function AddExpenseScreen({
             fontWeight: 800,
           }}
         >
-          {savedMsg ? '✓ ' + savedMsg : 'Save Expense'}
+          Save Expense (₹{amountVal > 0 ? amountVal.toLocaleString('en-IN') : '0'})
         </button>
       </div>
     </div>

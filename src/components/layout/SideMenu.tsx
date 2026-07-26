@@ -41,7 +41,7 @@ export function SideMenu({
         },
         {
           screen: 'credit' as Screen,
-          label: 'Customer Ledger',
+          label: 'Customer Credit',
           subLabel: 'Customer balances & pending credit',
           icon: <IconCreditCard />,
         },

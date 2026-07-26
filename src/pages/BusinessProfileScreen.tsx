@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BusinessProfile } from '../types'
 import { businessProfileService } from '../services/businessProfileService'
 import { IconMenu } from '../components/common/Icons'
+import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
 export function BusinessProfileScreen({
   onMenuOpen,
@@ -181,6 +182,23 @@ export function BusinessProfileScreen({
                   value={businessLogo}
                   onChange={e => setBusinessLogo(e.target.value)}
                   className="px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium text-gray-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+
+              {/* Payment QR Code Management */}
+              <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
+                <label className="text-xs font-bold text-gray-900 block">
+                  Payment QR Code (Offline UPI QR)
+                </label>
+                <p className="text-[11px] text-gray-500 font-medium">
+                  Customers can scan this QR code instantly whenever Online payment is selected during transactions.
+                </p>
+                <PaymentQrCodeDisplay
+                  businessProfile={profile}
+                  onProfileUpdated={(updated) => {
+                    setProfile(updated)
+                    if (onProfileUpdated) onProfileUpdated(updated)
+                  }}
                 />
               </div>
 

@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { Customer, PaymentMethod, Transaction, TransactionType } from '../types'
+import { useState, useEffect } from 'react'
+import { Customer, PaymentMethod, Transaction, TransactionType, BusinessProfile } from '../types'
 import { today, getTime, uid } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { IconBack } from '../components/common/Icons'
+import { businessProfileService } from '../services/businessProfileService'
+import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
 export function TransactionScreen({
   customer,
@@ -21,6 +23,11 @@ export function TransactionScreen({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [notes, setNotes] = useState('')
   const [savedMsg, setSavedMsg] = useState('')
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
+
+  useEffect(() => {
+    businessProfileService.getProfile().then(setBusinessProfile)
+  }, [])
 
   const [lastEdited, setLastEdited] = useState<'eggs' | 'rate' | 'total'>('eggs')
   const [secondLastEdited, setSecondLastEdited] = useState<'eggs' | 'rate' | 'total'>('rate')
@@ -341,18 +348,28 @@ export function TransactionScreen({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('gpay')}
+                    onClick={() => setPaymentMethod('online')}
                     className="py-3 rounded-xl text-sm font-700 transition-all border"
                     style={{
-                      background: paymentMethod === 'gpay' ? '#059669' : 'white',
-                      color: paymentMethod === 'gpay' ? 'white' : '#374151',
-                      borderColor: paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
+                      background: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : 'white',
+                      color: paymentMethod === 'online' || paymentMethod === 'gpay' ? 'white' : '#374151',
+                      borderColor: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
                       fontWeight: 700,
                     }}
                   >
-                    📱 GPay
+                    🌐 Online
                   </button>
                 </div>
+
+                {/* Instant QR Code Display when Online selected */}
+                {(paymentMethod === 'online' || paymentMethod === 'gpay') && (
+                  <PaymentQrCodeDisplay
+                    businessProfile={businessProfile}
+                    onProfileUpdated={setBusinessProfile}
+                    showTitle={false}
+                    compact={true}
+                  />
+                )}
               </div>
             </div>
           </>
@@ -394,18 +411,28 @@ export function TransactionScreen({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('gpay')}
+                  onClick={() => setPaymentMethod('online')}
                   className="py-3 rounded-xl text-sm font-700 transition-all border"
                   style={{
-                    background: paymentMethod === 'gpay' ? '#2563eb' : 'white',
-                    color: paymentMethod === 'gpay' ? 'white' : '#374151',
-                    borderColor: paymentMethod === 'gpay' ? '#2563eb' : '#e5e7eb',
+                    background: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#2563eb' : 'white',
+                    color: paymentMethod === 'online' || paymentMethod === 'gpay' ? 'white' : '#374151',
+                    borderColor: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#2563eb' : '#e5e7eb',
                     fontWeight: 700,
                   }}
                 >
-                  📱 GPay
+                  🌐 Online
                 </button>
               </div>
+
+              {/* Instant QR Code Display when Online selected */}
+              {(paymentMethod === 'online' || paymentMethod === 'gpay') && (
+                <PaymentQrCodeDisplay
+                  businessProfile={businessProfile}
+                  onProfileUpdated={setBusinessProfile}
+                  showTitle={false}
+                  compact={true}
+                />
+              )}
             </div>
 
             <div>

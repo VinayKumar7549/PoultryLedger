@@ -11,6 +11,7 @@ class BusinessProfileService {
     const phoneNumber = await settingsRepository.get('phone_number')
     const address = await settingsRepository.get('address')
     const businessLogo = await settingsRepository.get('business_logo')
+    const paymentQrCode = await settingsRepository.get('payment_qr_code')
     const configuredVal = await settingsRepository.get('business_profile_configured')
 
     return {
@@ -19,6 +20,7 @@ class BusinessProfileService {
       phoneNumber: phoneNumber || '',
       address: address || '',
       businessLogo: businessLogo || '',
+      paymentQrCode: paymentQrCode || '',
       configured: configuredVal === 'true' || Boolean(businessName),
     }
   }
@@ -42,10 +44,20 @@ class BusinessProfileService {
     if (profile.businessLogo !== undefined) {
       await settingsRepository.set('business_logo', profile.businessLogo.trim())
     }
+    if (profile.paymentQrCode !== undefined) {
+      await settingsRepository.set('payment_qr_code', profile.paymentQrCode)
+    }
 
     await settingsRepository.set('business_profile_configured', 'true')
 
     return await this.getProfile()
+  }
+
+  /**
+   * Deletes saved QR Code
+   */
+  async deleteQrCode(): Promise<void> {
+    await settingsRepository.set('payment_qr_code', '')
   }
 
   /**
