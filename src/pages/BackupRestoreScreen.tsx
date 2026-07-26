@@ -193,8 +193,8 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
             <IconMenu />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">Backup & Restore System</h1>
-            <p className="text-xs text-gray-500 font-medium">100% Offline SQLite Data Safety</p>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Backup & Restore</h1>
+            <p className="text-xs text-gray-500 font-medium">Keep your shop records safe & restore anytime</p>
           </div>
         </div>
       </div>

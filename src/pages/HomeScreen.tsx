@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Customer, Expense, EggPurchase, Screen } from '../types'
+import { Customer, Expense, EggPurchase, Screen, BusinessProfile } from '../types'
 import { RouteEntity } from '../database'
 import { today, fmtDate } from '../utils/date'
 import { fmtCurrency, fmtTrays } from '../utils/format'
@@ -14,6 +14,7 @@ import {
   IconBox,
   IconChevronRight,
   IconPlus,
+  IconMenu,
 } from '../components/common/Icons'
 
 export function HomeScreen({
@@ -25,6 +26,8 @@ export function HomeScreen({
   recentCustomerIds,
   navigate,
   onCreateRoute,
+  onMenuOpen,
+  businessProfile,
 }: {
   customers: Record<string, Customer>
   expenses: Expense[]
@@ -34,6 +37,8 @@ export function HomeScreen({
   recentCustomerIds?: string[]
   navigate: (s: Screen, r?: string, c?: string) => void
   onCreateRoute?: (name: string) => void
+  onMenuOpen?: () => void
+  businessProfile?: BusinessProfile | null
 }) {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalSalesAmount: 0,
@@ -100,21 +105,30 @@ export function HomeScreen({
     .slice(0, RECENT_CUSTOMERS_LIMIT)
 
   return (
-    <div className="flex flex-col h-full bg-white px-4 pt-4 pb-8 overflow-y-auto relative">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: '#059669' }}>
-          <IconEgg />
+    <div className="flex flex-col h-full bg-slate-50 px-4 pt-3 pb-8 overflow-y-auto relative">
+      {/* Top Bar Header */}
+      <div className="flex items-center justify-between py-2 mb-3 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-xs">
+        <div className="flex items-center gap-3">
+          {onMenuOpen && (
+            <button
+              onClick={onMenuOpen}
+              title="Open Navigation Menu"
+              className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-700 active:scale-95 transition-transform"
+            >
+              <IconMenu />
+            </button>
+          )}
+          <div>
+            <h1 className="text-base font-extrabold text-gray-900 leading-tight">
+              {businessProfile?.businessName || 'Sai Egg Center'}
+            </h1>
+            <p className="text-[11px] font-semibold text-gray-500">
+              {businessProfile?.ownerName ? `Prop: ${businessProfile.ownerName}` : 'Daily Deliveries & Sales'}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs font-600" style={{ color: '#6b7280', fontWeight: 600 }}>Good Morning</p>
-          <h1 className="text-xl font-800" style={{ fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>Daily Sales</h1>
-        </div>
-      </div>
 
-      {/* Date badge */}
-      <div className="mb-4">
-        <span className="inline-block px-4 py-1.5 rounded-full text-sm font-600" style={{ background: '#d1fae5', color: '#065f46', fontWeight: 600 }}>
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
           {fmtDate(today)}
         </span>
       </div>
@@ -339,40 +353,36 @@ export function HomeScreen({
           )}
         </div>
 
-        {/* Expenses */}
+        {/* Expenses Button */}
         <button
           onClick={() => navigate('expenses')}
-          className="w-full rounded-2xl p-4 flex items-center gap-4 active:scale-98 transition-transform border-2 text-left"
-          style={{ background: '#f9fafb', borderColor: '#e5e7eb' }}
+          className="w-full rounded-2xl p-4 flex items-center gap-4 active:scale-98 transition-transform border text-left bg-white shadow-xs"
+          style={{ borderColor: '#e5e7eb' }}
         >
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: '#fef3c7' }}>
-            <div style={{ color: '#d97706' }}><IconWallet /></div>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-amber-100 text-amber-700">
+            <IconWallet />
           </div>
           <div className="flex-1">
-            <p className="text-base font-700" style={{ color: '#111827', fontWeight: 700 }}>Expenses</p>
-            <p className="text-xs" style={{ color: '#6b7280' }}>Record daily business expenses</p>
+            <p className="text-sm font-extrabold text-gray-900">Record Expense</p>
+            <p className="text-xs text-gray-500 font-medium">Log daily shop expenses, rent & fuel</p>
           </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
+          <IconChevronRight />
         </button>
 
-        {/* View History */}
+        {/* Sales Register Button */}
         <button
           onClick={() => navigate('history')}
-          className="w-full rounded-2xl p-4 flex items-center gap-4 active:scale-98 transition-transform border-2 text-left"
-          style={{ background: '#f9fafb', borderColor: '#e5e7eb' }}
+          className="w-full rounded-2xl p-4 flex items-center gap-4 active:scale-98 transition-transform border text-left bg-white shadow-xs"
+          style={{ borderColor: '#e5e7eb' }}
         >
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: '#d1fae5' }}>
-            <div style={{ color: '#059669' }}><IconHistory /></div>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-emerald-100 text-emerald-700">
+            <IconHistory />
           </div>
           <div className="flex-1">
-            <p className="text-base font-700" style={{ color: '#111827', fontWeight: 700 }}>View History</p>
-            <p className="text-xs" style={{ color: '#6b7280' }}>Past transactions & records</p>
+            <p className="text-sm font-extrabold text-gray-900">Sales Register</p>
+            <p className="text-xs text-gray-500 font-medium">View all daily sales & payment logs</p>
           </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
+          <IconChevronRight />
         </button>
       </div>
 

@@ -161,7 +161,7 @@ export function InventoryScreen({
           <button onClick={onMenuOpen} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100" style={{ color: '#111827' }}>
             <IconMenu />
           </button>
-          <h2 className="text-lg font-extrabold text-gray-900 truncate">Inventory Management</h2>
+          <h2 className="text-lg font-extrabold text-gray-900 truncate">Stock & Purchases</h2>
         </div>
 
         <button

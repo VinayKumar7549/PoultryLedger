@@ -82,8 +82,8 @@ export function BusinessProfileScreen({
             <IconMenu />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">Business Profile</h1>
-            <p className="text-xs text-gray-500 font-medium">SQLite Settings Persistence</p>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Shop Profile</h1>
+            <p className="text-xs text-gray-500 font-medium">Manage shop name, phone & bill headers</p>
           </div>
         </div>
       </div>

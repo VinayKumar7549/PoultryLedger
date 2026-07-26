@@ -221,6 +221,8 @@ export default function App() {
                 recentCustomerIds={recentCustomerIds}
                 navigate={(s, r, c) => navigate(s, r, c)}
                 onCreateRoute={handleCreateRoute}
+                onMenuOpen={() => setShowMenu(true)}
+                businessProfile={businessProfile}
               />
             )}
             {screen === 'route' && (

@@ -238,7 +238,7 @@ export function CreditRecordsScreen({
           <button onClick={onMenuOpen} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100" style={{ color: '#111827' }}>
             <IconMenu />
           </button>
-          <h2 className="text-xl font-extrabold text-gray-900">Credit Records</h2>
+          <h2 className="text-xl font-extrabold text-gray-900">Customer Ledger</h2>
         </div>
 
         <button

@@ -157,8 +157,8 @@ export function ReportsScreen({
             <IconMenu />
           </button>
           <div>
-            <h1 className="text-lg font-extrabold text-gray-900 leading-tight">Central Reports Hub</h1>
-            <p className="text-xs text-gray-500 font-medium font-semibold">SQLite Source of Truth</p>
+            <h1 className="text-lg font-extrabold text-gray-900 leading-tight">Reports</h1>
+            <p className="text-xs text-gray-500 font-semibold">Sales, profit & customer PDF statements</p>
           </div>
         </div>
 

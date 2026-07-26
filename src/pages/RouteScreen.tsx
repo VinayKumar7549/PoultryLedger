@@ -206,15 +206,14 @@ export function RouteScreen({
 
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-700 active:scale-95 transition-transform"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold active:scale-95 transition-transform shadow-xs"
             style={{
               background: isEditing ? '#059669' : '#f3f4f6',
               color: isEditing ? 'white' : '#374151',
-              fontWeight: 700,
             }}
           >
             {isEditing ? <IconCheck /> : <IconPlus />}
-            <span>{isEditing ? 'Done' : 'Edit List'}</span>
+            <span>{isEditing ? 'Done Editing' : 'Manage Shops'}</span>
           </button>
         </div>
       </div>
@@ -438,18 +437,18 @@ export function RouteScreen({
                   <>
                     <button
                       onClick={() => navigate('customer_history', routeId, customer.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-700 active:scale-95 transition-transform"
-                      style={{ background: '#e0e7ff', color: '#3730a3', fontWeight: 700 }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                      style={{ background: '#e0e7ff', color: '#3730a3' }}
                     >
                       <IconHistory />
-                      <span>View History</span>
+                      <span>Ledger</span>
                     </button>
                     <button
                       onClick={() => navigate('transaction', routeId, customer.id)}
-                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-700 active:scale-95 transition-transform"
-                      style={{ background: '#059669', color: 'white', fontWeight: 700 }}
+                      className="flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform shadow-xs"
+                      style={{ background: '#059669', color: 'white' }}
                     >
-                      <span>Record Sale</span>
+                      <span>New Sale</span>
                       <IconChevronRight />
                     </button>
                   </>
