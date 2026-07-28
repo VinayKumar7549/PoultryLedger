@@ -2,12 +2,36 @@ import { transactionRepository, customerRepository } from '../database'
 import { dbInstance } from '../database/database'
 import { entityToTransaction } from './transactionService'
 import { Transaction } from '../types'
+import { today } from '../utils/date'
 
 export interface CreditTimelineEntry {
   tx: Transaction
   updatedOutstanding: number
   creditAdded: number
   creditReduced: number
+  isOpeningBalance?: boolean
+}
+
+function parseCreatedAtDate(createdAt?: string): { date: string; time: string } {
+  if (!createdAt) {
+    return { date: today, time: '00:00' }
+  }
+  let dateStr = today
+  let timeStr = '00:00'
+
+  if (createdAt.includes('T')) {
+    const parts = createdAt.split('T')
+    dateStr = parts[0]
+    if (parts[1]) timeStr = parts[1].substring(0, 5)
+  } else if (createdAt.includes(' ')) {
+    const parts = createdAt.split(' ')
+    dateStr = parts[0]
+    if (parts[1]) timeStr = parts[1].substring(0, 5)
+  } else if (createdAt.length >= 10) {
+    dateStr = createdAt.substring(0, 10)
+  }
+
+  return { date: dateStr, time: timeStr }
 }
 
 class CreditService {
@@ -43,30 +67,61 @@ class CreditService {
   async getCustomerCreditHistory(customerId: string, currentOutstanding: number): Promise<CreditTimelineEntry[]> {
     try {
       await dbInstance.initDatabase()
-      const txEntities = await transactionRepository.getByCustomerId(customerId)
+      const custEntity = await customerRepository.getById(customerId)
+      const txEntities = await transactionRepository.getCreditTransactionsByCustomerId(customerId)
       const transactions = txEntities.map(e => entityToTransaction(e))
 
+      const openingCredit = Number(custEntity?.opening_credit) || 0
+
+      // Add Opening Balance transaction if openingCredit > 0
+      if (custEntity && openingCredit > 0) {
+        const { date: openingDate, time: openingTime } = parseCreatedAtDate(custEntity.created_at)
+        const openingTx: Transaction = {
+          id: `opening-${customerId}`,
+          customerId,
+          type: 'sale',
+          date: openingDate,
+          time: openingTime,
+          trays: 0,
+          amountToBePaid: openingCredit,
+          amountPaid: 0,
+          paymentMethod: 'cash',
+          creditKeptToday: openingCredit,
+          creditChange: -openingCredit,
+          notes: 'Opening Balance Created',
+        }
+        transactions.push(openingTx)
+      }
+
+      // Sort newest transaction first (Date DESC, Time DESC)
       transactions.sort((a, b) => {
-        const dateTimeA = `${a.date} ${a.time}`
-        const dateTimeB = `${b.date} ${b.time}`
+        const dateTimeA = `${a.date || ''} ${a.time || ''}`
+        const dateTimeB = `${b.date || ''} ${b.time || ''}`
         return dateTimeB.localeCompare(dateTimeA)
       })
 
       let runningCredit = currentOutstanding
-      const historyEntries: CreditTimelineEntry[] = transactions.map(tx => {
-        const entryOutstanding = runningCredit
-        const creditAdded = tx.creditKeptToday || Math.max(0, tx.amountToBePaid - tx.amountPaid)
-        const creditReduced = Math.max(0, tx.amountPaid - tx.amountToBePaid)
-        const netCreditChange = creditAdded - creditReduced
-        runningCredit = Math.max(0, runningCredit - netCreditChange)
+      const historyEntries: CreditTimelineEntry[] = []
 
-        return {
-          tx,
-          updatedOutstanding: entryOutstanding,
-          creditAdded,
-          creditReduced,
+      for (const tx of transactions) {
+        const isOpening = tx.id.startsWith('opening-')
+        const creditAdded = isOpening ? openingCredit : (tx.creditKeptToday || Math.max(0, tx.amountToBePaid - tx.amountPaid))
+        const creditReduced = isOpening ? 0 : Math.max(0, tx.amountPaid - tx.amountToBePaid)
+        const netCreditChange = creditAdded - creditReduced
+
+        if (isOpening || creditAdded > 0 || creditReduced > 0 || Math.abs(netCreditChange) > 0) {
+          const entryOutstanding = runningCredit
+          runningCredit = Math.max(0, runningCredit - netCreditChange)
+
+          historyEntries.push({
+            tx,
+            updatedOutstanding: entryOutstanding,
+            creditAdded,
+            creditReduced,
+            isOpeningBalance: isOpening,
+          })
         }
-      })
+      }
 
       return historyEntries
     } catch (err) {

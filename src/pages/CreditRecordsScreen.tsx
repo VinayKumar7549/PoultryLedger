@@ -147,11 +147,45 @@ export function CreditRecordsScreen({
             </p>
 
             {historyEntries.length === 0 ? (
-              <p className="text-xs text-gray-400 italic py-4 text-center">No transaction history found.</p>
+              <p className="text-xs text-gray-400 italic py-4 text-center">No credit activity found.</p>
             ) : (
               historyEntries.map(entry => {
-                const { tx, creditAdded, creditReduced, updatedOutstanding } = entry
+                const { tx, creditAdded, creditReduced, updatedOutstanding, isOpeningBalance } = entry
                 const isPayment = tx.type === 'payment' || (tx.trays === 0 && tx.amountToBePaid === 0)
+
+                if (isOpeningBalance) {
+                  return (
+                    <div
+                      key={tx.id}
+                      className="p-3.5 rounded-2xl border border-amber-200 bg-amber-50/60 flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          <p className="text-xs font-black uppercase text-amber-900 tracking-wide">
+                            OPENING BALANCE CREATED
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-700">
+                          {fmtDate(tx.date)} {tx.time && tx.time !== '00:00' ? tx.time : ''}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-amber-200/80">
+                        <div>
+                          <span className="text-amber-800 font-medium">Opening Balance: </span>
+                          <span className="font-extrabold text-amber-950">{fmtCurrency(creditAdded)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-amber-800 font-medium">Outstanding After: </span>
+                          <span className="text-sm font-extrabold text-amber-900">
+                            {fmtCurrency(updatedOutstanding)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
 
                 return (
                   <div

@@ -29,7 +29,14 @@ export class TransactionRepository {
 
   async getByCustomerId(customerId: string): Promise<TransactionEntity[]> {
     return await dbInstance.query<TransactionEntity>(
-      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY date DESC, time DESC',
+      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY date DESC, time DESC, created_at DESC',
+      [customerId]
+    )
+  }
+
+  async getCreditTransactionsByCustomerId(customerId: string): Promise<TransactionEntity[]> {
+    return await dbInstance.query<TransactionEntity>(
+      'SELECT * FROM transactions WHERE customer_id = ? AND (credit_change != 0 OR credit_kept_today != 0 OR amount_to_be_paid != amount_paid) ORDER BY date DESC, time DESC, created_at DESC',
       [customerId]
     )
   }

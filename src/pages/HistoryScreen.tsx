@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Customer } from '../types'
+import { Customer, Transaction } from '../types'
 import { today, shiftDateStr, fmtDate } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { historyService, DailyTransactionItem } from '../services/historyService'
@@ -15,6 +15,8 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconList,
+  IconEdit,
+  IconTrash,
 } from '../components/common/Icons'
 
 export function HistoryScreen({
@@ -22,11 +24,15 @@ export function HistoryScreen({
   historyDate,
   setHistoryDate,
   onMenuOpen,
+  onEditTransaction,
+  onDeleteTransaction,
 }: {
   customers: Record<string, Customer>
   historyDate: string
   setHistoryDate: (d: string) => void
   onMenuOpen: () => void
+  onEditTransaction?: (tx: Transaction) => void
+  onDeleteTransaction?: (id: string, customerId: string) => void
 }) {
   const [dailyData, setDailyData] = useState<{
     items: DailyTransactionItem[]
@@ -131,6 +137,15 @@ export function HistoryScreen({
     const dateMatch = (tx.date || '').toLowerCase().includes(q) || fmtDate(tx.date).toLowerCase().includes(q)
     return nameMatch || subtitleMatch || dateMatch
   })
+
+  const [txToDelete, setTxToDelete] = useState<{ tx: Transaction; customerName: string } | null>(null)
+
+  const confirmDelete = () => {
+    if (txToDelete && onDeleteTransaction) {
+      onDeleteTransaction(txToDelete.tx.id, txToDelete.tx.customerId)
+      setTxToDelete(null)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-white relative">
@@ -243,13 +258,33 @@ export function HistoryScreen({
                       <p className="text-xs text-gray-500">{customer.subtitle}</p>
                     )}
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
-                      isPayment ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {isPayment ? 'Payment' : 'Sale'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
+                        isPayment ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                    >
+                      {isPayment ? 'Payment' : 'Sale'}
+                    </span>
+                    {onEditTransaction && (
+                      <button
+                        onClick={() => onEditTransaction(tx)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors"
+                        title="Edit Transaction"
+                      >
+                        <IconEdit />
+                      </button>
+                    )}
+                    {onDeleteTransaction && (
+                      <button
+                        onClick={() => setTxToDelete({ tx, customerName: customer.name })}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
+                        title="Delete Transaction"
+                      >
+                        <IconTrash />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100">
@@ -272,6 +307,37 @@ export function HistoryScreen({
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {txToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl border border-slate-200 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-xl font-bold">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Delete Transaction</h3>
+              <p className="text-xs text-slate-600 mt-1">
+                Are you sure you want to delete this transaction for <strong>{txToDelete.customerName}</strong>?
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setTxToDelete(null)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Date Filter Picker Dialog */}
       <DateFilterPicker

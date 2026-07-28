@@ -1,8 +1,10 @@
 import { Capacitor } from '@capacitor/core'
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite'
+import { Preferences } from '@capacitor/preferences'
 import { INITIAL_SCHEMA_SQL } from './migrations/schema'
 
 export const DB_NAME = 'poultryledger.db'
+
 
 class WebInMemoryDB {
   private tables: Record<string, any[]> = {
@@ -98,8 +100,23 @@ class WebInMemoryDB {
       } else if (cleanSql.includes('where id = ?')) {
         res = res.filter(t => String(t.id) === String(values[0]))
       }
+
+      if (cleanSql.includes('credit_change != 0') || cleanSql.includes('credit_kept_today != 0')) {
+        res = res.filter(t => {
+          const change = Number(t.credit_change) || 0
+          const kept = Number(t.credit_kept_today) || 0
+          const billed = Number(t.amount_to_be_paid) || 0
+          const paid = Number(t.amount_paid) || 0
+          return change !== 0 || kept !== 0 || billed !== paid
+        })
+      }
+
       if (cleanSql.includes('order by date desc, time desc')) {
-        res.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
+        res.sort((a, b) => {
+          const keyA = `${a.date || ''} ${a.time || ''} ${a.created_at || ''}`
+          const keyB = `${b.date || ''} ${b.time || ''} ${b.created_at || ''}`
+          return keyB.localeCompare(keyA)
+        })
       }
       return res as unknown as T[]
     }
@@ -422,7 +439,28 @@ class Database {
 
     try {
       if (Capacitor.isNativePlatform()) {
+        console.log('[DB] Native platform detected. Initializing SQLite & Preferences...')
+
+        // Verify Preferences plugin initialization and log saved values
+        try {
+          const prevLaunch = await Preferences.get({ key: 'last_app_launch' })
+          console.log('[PREFERENCES] Previously saved launch timestamp:', prevLaunch.value || '(None - First Run)')
+          await Preferences.set({ key: 'last_app_launch', value: new Date().toISOString() })
+          const currentLaunch = await Preferences.get({ key: 'last_app_launch' })
+          console.log('[PREFERENCES] Preferences plugin active. Updated launch timestamp:', currentLaunch.value)
+        } catch (prefErr) {
+          console.error('[PREFERENCES] Error initializing Preferences plugin:', prefErr)
+        }
+
         this.sqliteConnection = new SQLiteConnection(CapacitorSQLite)
+
+        // Ensure consistency between JS and native Android SQLite connections
+        try {
+          await this.sqliteConnection.checkConnectionsConsistency()
+        } catch (consErr) {
+          console.warn('[DB] checkConnectionsConsistency warning:', consErr)
+        }
+
         const isConn = await this.sqliteConnection.isConnection(DB_NAME, false)
         if (isConn.result) {
           this.db = await this.sqliteConnection.retrieveConnection(DB_NAME, false)
@@ -436,7 +474,20 @@ class Database {
           )
         }
 
-        await this.db.open()
+        // Only call open if the database is not already open
+        const isDBOpen = await this.db.isDBOpen()
+        if (!isDBOpen.result) {
+          await this.db.open()
+        }
+
+        // Log database initialization status
+        try {
+          const dbVerRes = await this.db.getVersion()
+          console.log(`[DB] SQLite opened successfully! Database Version: ${dbVerRes.version}`)
+        } catch (logErr) {
+          console.log('[DB] SQLite opened successfully!')
+        }
+
         await this.db.execute(INITIAL_SCHEMA_SQL)
         try {
           await this.db.execute('ALTER TABLE customers ADD COLUMN opening_credit REAL NOT NULL DEFAULT 0;')
@@ -466,6 +517,7 @@ class Database {
       return false
     }
   }
+
 
   async beginTransaction(): Promise<void> {
     await this.initDatabase()

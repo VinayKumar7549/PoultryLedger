@@ -1,8 +1,14 @@
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import { FilePicker } from '@capawesome/capacitor-file-picker'
 import jsPDF from 'jspdf'
+
+interface NativeFileOpenerPlugin {
+  openFile(options: { filePath: string; mimeType?: string }): Promise<{ success?: boolean; noAppFound?: boolean }>
+}
+
+const NativeFileOpener = registerPlugin<NativeFileOpenerPlugin>('NativeFileOpener')
 
 export interface FileActionResult {
   success: boolean
@@ -81,12 +87,12 @@ class FileService {
    * Documents/
    * └── PoultryLedger/
    *     ├── Backups/
-   *     ├── Reports/
-   *     ├── Customer Statements/
-   *     ├── Daily Sales/
-   *     ├── Credit Reports/
-   *     ├── Inventory/
-   *     └── Expenses/
+   *     └── Reports/
+   *         ├── Customer Statements/
+   *         ├── Daily Sales/
+   *         ├── Credit Reports/
+   *         ├── Inventory/
+   *         └── Expenses/
    */
   async ensureDirectoryStructure(): Promise<void> {
     if (!this.isAndroid()) return
@@ -95,15 +101,10 @@ class FileService {
     // 1. First ensure root PoultryLedger directory exists
     await this.ensureRootDirectoryExists()
 
-    // 2. Ensure all subdirectories are explicitly prefixed with PoultryLedger/
+    // 2. Ensure subdirectories strictly under Documents/PoultryLedger/
     const directories = [
       'PoultryLedger/Backups',
       'PoultryLedger/Reports',
-      'PoultryLedger/Customer Statements',
-      'PoultryLedger/Daily Sales',
-      'PoultryLedger/Credit Reports',
-      'PoultryLedger/Inventory',
-      'PoultryLedger/Expenses',
       'PoultryLedger/Reports/Customer Statements',
       'PoultryLedger/Reports/Daily Sales',
       'PoultryLedger/Reports/Credit Reports',
@@ -120,6 +121,50 @@ class FileService {
         })
       } catch {
         // Folder exists or creation handled
+      }
+    }
+
+    // 3. Migration / Cleanup: Move any files from legacy root category folders to Reports/<Category>/
+    const categories: ReportCategory[] = [
+      'Customer Statements',
+      'Daily Sales',
+      'Credit Reports',
+      'Inventory',
+      'Expenses',
+    ]
+
+    for (const category of categories) {
+      const legacyPath = `PoultryLedger/${category}`
+      const newPathDir = `PoultryLedger/Reports/${category}`
+      try {
+        const res = await Filesystem.readdir({
+          path: legacyPath,
+          directory: Directory.Documents,
+        })
+        if (res && res.files) {
+          for (const f of res.files) {
+            const fname = typeof f === 'string' ? f : f.name
+            if (fname) {
+              try {
+                await Filesystem.rename({
+                  from: `${legacyPath}/${fname}`,
+                  directory: Directory.Documents,
+                  to: `${newPathDir}/${fname}`,
+                  toDirectory: Directory.Documents,
+                })
+              } catch {
+                // Ignore rename errors if target already moved
+              }
+            }
+          }
+        }
+        await Filesystem.rmdir({
+          path: legacyPath,
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // Legacy dir does not exist or already clean
       }
     }
   }
@@ -155,15 +200,15 @@ class FileService {
   }
 
   /**
-   * Generate & Save PDF file directly to Internal Storage inside Documents/PoultryLedger/<Category>/
+   * Generate & Save PDF file directly to Internal Storage inside Documents/PoultryLedger/Reports/<Category>/
    * 
    * Strict 6-Step Execution Flow:
-   * 1. Verify 'PoultryLedger' root directory exists (if not, create it)
-   * 2. Verify required subfolder inside 'PoultryLedger' exists (if not, create it)
-   * 3. Extract base64 and write file to Documents/PoultryLedger/<Category>/<filename>
-   * 4. Verify file exists on disk
+   * 1. Verify 'Documents/' and 'PoultryLedger' root directory exists (if not, create it)
+   * 2. Verify required subfolder 'PoultryLedger/Reports/<Category>' exists (if not, create it)
+   * 3. Extract base64 and write file to Documents/PoultryLedger/Reports/<Category>/<filename>
+   * 4. Verify file exists on disk using Filesystem.stat
    * 5. Verify file size > 0
-   * 6. Display success modal with verified dynamic path
+   * 6. Return verified success result with real verified path
    */
   async savePdf(
     pdfDoc: jsPDF,
@@ -180,37 +225,32 @@ class FileService {
         return {
           success: true,
           filename,
-          folderLocation: `Downloads / PoultryLedger / ${category}`,
+          folderLocation: `Downloads / PoultryLedger / Reports / ${category}`,
           creationTime: nowStr,
           message: `PDF exported successfully: ${filename}`,
         }
       }
 
-      // STEP 1 & 2: VERIFY & CREATE ROOT 'PoultryLedger' AND SUBFOLDERS
-      await this.ensureRootDirectoryExists()
+      // STEP 1 & 2: VERIFY & CREATE ROOT 'PoultryLedger' AND 'Reports/<Category>' SUBFOLDER
       await this.ensureDirectoryStructure()
 
-      const categoryDir = `PoultryLedger/${category}`
-      const reportsCategoryDir = `PoultryLedger/Reports/${category}`
+      const targetDir = `PoultryLedger/Reports/${category}`
 
-      // Pre-write target folder verification / creation
-      for (const targetDir of [categoryDir, reportsCategoryDir]) {
-        try {
-          await Filesystem.mkdir({
-            path: targetDir,
-            directory: Directory.Documents,
-            recursive: true,
-          })
-        } catch {
-          // Folder exists
-        }
+      try {
+        await Filesystem.mkdir({
+          path: targetDir,
+          directory: Directory.Documents,
+          recursive: true,
+        })
+      } catch {
+        // Directory exists
       }
 
       // Extract base64 representation of PDF
       const dataUri = pdfDoc.output('datauristring')
       const base64Data = dataUri.split(',')[1]
 
-      const relativePath = `${categoryDir}/${filename}`
+      const relativePath = `${targetDir}/${filename}`
 
       // STEP 3: WRITE FILE TO DISK
       const saveRes = await Filesystem.writeFile({
@@ -219,18 +259,6 @@ class FileService {
         directory: Directory.Documents,
         recursive: true,
       })
-
-      // Secondary convenience mirror under Reports/
-      try {
-        await Filesystem.writeFile({
-          path: `${reportsCategoryDir}/${filename}`,
-          data: base64Data,
-          directory: Directory.Documents,
-          recursive: true,
-        })
-      } catch {
-        // Mirrored copy handled
-      }
 
       // STEP 4 & 5: DISK VERIFICATION - Check presence & file size > 0
       const statRes = await Filesystem.stat({
@@ -242,7 +270,7 @@ class FileService {
         throw new Error(`Disk verification failed: File was not created or is 0 bytes at ${relativePath}`)
       }
 
-      const folderLocationDisplay = `Documents/PoultryLedger/${category}/`
+      const folderLocationDisplay = `Documents/PoultryLedger/Reports/${category}/`
 
       // STEP 6: RETURN VERIFIED SUCCESS RESULT
       return {
@@ -268,12 +296,12 @@ class FileService {
    * Save Database Backup JSON file directly to Internal Storage (Documents/PoultryLedger/Backups/)
    * 
    * Strict 6-Step Execution Flow:
-   * 1. Verify 'PoultryLedger' root directory exists (if not, create it)
+   * 1. Verify 'Documents/' and 'PoultryLedger' root directory exists (if not, create it)
    * 2. Verify 'Backups' subfolder inside 'PoultryLedger' exists (if not, create it)
    * 3. Write backup JSON to Documents/PoultryLedger/Backups/<filename>
-   * 4. Verify file exists on disk
+   * 4. Verify file exists on disk using Filesystem.stat
    * 5. Verify file size > 0
-   * 6. Return verified success result
+   * 6. Return verified success result with real verified path
    */
   async saveBackupJson(backupData: any, filename: string): Promise<FileActionResult> {
     try {
@@ -303,7 +331,7 @@ class FileService {
       }
 
       // STEP 1 & 2: VERIFY & CREATE ROOT 'PoultryLedger' AND 'Backups' SUBFOLDER
-      await this.ensureRootDirectoryExists()
+      await this.ensureDirectoryStructure()
 
       const backupDir = 'PoultryLedger/Backups'
       try {
@@ -313,7 +341,7 @@ class FileService {
           recursive: true,
         })
       } catch {
-        // Folder exists
+        // Directory exists
       }
 
       const relativePath = `${backupDir}/${filename}`
@@ -327,6 +355,7 @@ class FileService {
         recursive: true,
       })
 
+
       // STEP 4 & 5: DISK VERIFICATION - Check presence & file size > 0
       const statRes = await Filesystem.stat({
         path: relativePath,
@@ -338,6 +367,7 @@ class FileService {
       }
 
       const folderLocationDisplay = 'Documents/PoultryLedger/Backups/'
+      
 
       // STEP 6: RETURN VERIFIED SUCCESS RESULT
       return {
@@ -376,21 +406,30 @@ class FileService {
   }
 
   /**
-   * Optionally Open a file using system viewer
+   * Directly opens exported PDF / JSON file using native Android ACTION_VIEW intent (FileProvider)
+   * Launches Android's native OS chooser (Adobe Acrobat, Google Drive PDF Viewer, WPS Office, etc.) with Just Once / Always options.
    */
-  async openFile(fileUri: string, title: string = 'Open File'): Promise<void> {
+  async openFile(
+    fileUri: string,
+    mimeType: string = 'application/pdf'
+  ): Promise<{ success: boolean; noAppFound?: boolean }> {
     try {
       if (this.isAndroid()) {
-        await Share.share({
-          title,
-          url: fileUri,
-          dialogTitle: 'View File',
+        const res = await NativeFileOpener.openFile({
+          filePath: fileUri,
+          mimeType,
         })
+        if (res && res.noAppFound) {
+          return { success: false, noAppFound: true }
+        }
+        return { success: true }
       } else {
         window.open(fileUri, '_blank')
+        return { success: true }
       }
     } catch (err: any) {
-      console.log('[FileService] Open file action dismissed:', err)
+      console.error('[FileService] Open file action exception:', err)
+      return { success: false }
     }
   }
 

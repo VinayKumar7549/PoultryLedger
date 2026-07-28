@@ -142,8 +142,28 @@ export default function App() {
     setScreen('home')
   }
 
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined)
+
   const handleSaveTransaction = async (tx: Transaction, updatedOutstanding: number) => {
-    await transactionService.createTransaction(tx, updatedOutstanding)
+    if (editingTransaction) {
+      await transactionService.updateTransaction(tx, updatedOutstanding)
+      setEditingTransaction(undefined)
+    } else {
+      await transactionService.createTransaction(tx, updatedOutstanding)
+    }
+    const res = await customerService.fetchCustomersAndRoutes()
+    setCustomers(res.customers)
+    setRouteCustomerMap(res.routeCustomerMap)
+  }
+
+  const handleEditTransaction = (tx: Transaction) => {
+    setEditingTransaction(tx)
+    setSelectedCustomerId(tx.customerId)
+    setScreen('transaction')
+  }
+
+  const handleDeleteTransaction = async (id: string, customerId: string) => {
+    await transactionService.deleteTransaction(id, customerId)
     const res = await customerService.fetchCustomersAndRoutes()
     setCustomers(res.customers)
     setRouteCustomerMap(res.routeCustomerMap)
@@ -175,6 +195,16 @@ export default function App() {
 
   const handleSaveExpense = async (expense: Expense) => {
     const updated = await expenseService.createExpense(expense)
+    setExpenses(updated)
+  }
+
+  const handleUpdateExpense = async (expense: Expense) => {
+    const updated = await expenseService.updateExpense(expense)
+    setExpenses(updated)
+  }
+
+  const handleDeleteExpense = async (id: string) => {
+    const updated = await expenseService.deleteExpense(id)
     setExpenses(updated)
   }
 
@@ -246,7 +276,11 @@ export default function App() {
             {screen === 'transaction' && selectedCustomer && (
               <TransactionScreen
                 customer={selectedCustomer}
-                onBack={() => setScreen('route')}
+                editingTx={editingTransaction}
+                onBack={() => {
+                  setEditingTransaction(undefined)
+                  setScreen('route')
+                }}
                 onSave={handleSaveTransaction}
               />
             )}
@@ -259,6 +293,8 @@ export default function App() {
                 routeNames={routeNames}
                 onBack={() => setScreen('route')}
                 onUpdateCustomer={handleUpdateCustomer}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
               />
             )}
             {screen === 'history' && (
@@ -267,6 +303,8 @@ export default function App() {
                 historyDate={historyDate}
                 setHistoryDate={setHistoryDate}
                 onMenuOpen={() => setShowMenu(true)}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
               />
             )}
             {screen === 'credit' && (
@@ -290,6 +328,8 @@ export default function App() {
                 setExpenseDate={setExpenseDate}
                 onMenuOpen={() => setShowMenu(true)}
                 onAddExpense={() => navigate('expenses')}
+                onUpdateExpense={handleUpdateExpense}
+                onDeleteExpense={handleDeleteExpense}
               />
             )}
             {screen === 'inventory' && (

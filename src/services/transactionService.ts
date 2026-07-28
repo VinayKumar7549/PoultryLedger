@@ -1,5 +1,6 @@
 import { Transaction, TransactionType } from '../types'
-import { transactionRepository, customerRepository, TransactionEntity } from '../database'
+import { transactionRepository, TransactionEntity } from '../database'
+import { creditService } from './creditService'
 
 export const entityToTransaction = (entity: TransactionEntity): Transaction => ({
   id: entity.id,
@@ -27,7 +28,7 @@ class TransactionService {
     return list.map(e => entityToTransaction(e))
   }
 
-  async createTransaction(tx: Transaction, updatedOutstandingCredit: number): Promise<Transaction[]> {
+  async createTransaction(tx: Transaction, _updatedOutstandingCredit?: number): Promise<Transaction[]> {
     await transactionRepository.create({
       id: tx.id,
       customer_id: tx.customerId,
@@ -43,14 +44,12 @@ class TransactionService {
       notes: tx.notes || '',
     })
 
-    await customerRepository.update(tx.customerId, {
-      outstanding_credit: updatedOutstandingCredit,
-    })
+    await creditService.recalculateAndSaveCustomerCredit(tx.customerId)
 
     return await this.getAllTransactions()
   }
 
-  async updateTransaction(tx: Transaction, updatedOutstandingCredit: number): Promise<Transaction[]> {
+  async updateTransaction(tx: Transaction, _updatedOutstandingCredit?: number): Promise<Transaction[]> {
     await transactionRepository.update(tx.id, {
       type: tx.type || 'sale',
       date: tx.date,
@@ -64,19 +63,15 @@ class TransactionService {
       notes: tx.notes || '',
     })
 
-    await customerRepository.update(tx.customerId, {
-      outstanding_credit: updatedOutstandingCredit,
-    })
+    await creditService.recalculateAndSaveCustomerCredit(tx.customerId)
 
     return await this.getAllTransactions()
   }
 
-  async deleteTransaction(id: string, customerId: string, updatedOutstandingCredit: number): Promise<Transaction[]> {
+  async deleteTransaction(id: string, customerId: string, _updatedOutstandingCredit?: number): Promise<Transaction[]> {
     await transactionRepository.delete(id)
 
-    await customerRepository.update(customerId, {
-      outstanding_credit: updatedOutstandingCredit,
-    })
+    await creditService.recalculateAndSaveCustomerCredit(customerId)
 
     return await this.getAllTransactions()
   }

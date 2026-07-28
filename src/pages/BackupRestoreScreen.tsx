@@ -9,6 +9,7 @@ import { fileService, FileActionResult } from '../services/fileService'
 import { fmtDate } from '../utils/date'
 import { IconMenu } from '../components/common/Icons'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { FindMyFilesHelpModal } from '../components/common/FindMyFilesHelpModal'
 
 export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) {
   const [currentBackup, setCurrentBackup] = useState<PoultryLedgerBackup | null>(null)
@@ -16,6 +17,7 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
   const [selectedFileBackup, setSelectedFileBackup] = useState<PoultryLedgerBackup | null>(null)
   const [selectedFileMetadata, setSelectedFileMetadata] = useState<BackupMetadata | null>(null)
   const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(false)
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [statusMessage, setStatusMessage] = useState<{
@@ -197,6 +199,14 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
             <p className="text-xs text-gray-500 font-medium">Keep your shop records safe & restore anytime</p>
           </div>
         </div>
+
+        <button
+          onClick={() => setShowHelpModal(true)}
+          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 shadow-xs"
+        >
+          <span>📁</span>
+          <span>Can't Find Files?</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -512,6 +522,9 @@ export function BackupRestoreScreen({ onMenuOpen }: { onMenuOpen: () => void }) 
 
       {/* ── EXPORT SUCCESS MODAL ── */}
       <ExportSuccessModal details={exportSuccessDetails} onClose={() => setExportSuccessDetails(null)} />
+
+      {/* ── FIND MY FILES HELP MODAL ── */}
+      <FindMyFilesHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </div>
   )
 }

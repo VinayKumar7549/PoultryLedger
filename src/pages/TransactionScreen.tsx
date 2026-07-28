@@ -10,18 +10,30 @@ export function TransactionScreen({
   customer,
   onBack,
   onSave,
+  editingTx,
 }: {
   customer: Customer
   onBack: () => void
   onSave: (tx: Transaction, updatedOutstanding: number) => void
+  editingTx?: Transaction
 }) {
-  const [txType, setTxType] = useState<TransactionType>('sale')
-  const [numEggs, setNumEggs] = useState('')
-  const [ratePer100, setRatePer100] = useState('')
-  const [totalAmount, setTotalAmount] = useState('')
-  const [amountPaid, setAmountPaid] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
-  const [notes, setNotes] = useState('')
+  const [txType, setTxType] = useState<TransactionType>(editingTx?.type || 'sale')
+  const [numEggs, setNumEggs] = useState(
+    editingTx ? (editingTx.trays ? String(Math.round(editingTx.trays * 30)) : '') : ''
+  )
+  const [totalAmount, setTotalAmount] = useState(
+    editingTx ? (editingTx.amountToBePaid ? String(editingTx.amountToBePaid) : '') : ''
+  )
+  const [ratePer100, setRatePer100] = useState(() => {
+    if (!editingTx || !editingTx.trays || !editingTx.amountToBePaid) return ''
+    const eggs = editingTx.trays * 30
+    return eggs > 0 ? String(Number(((editingTx.amountToBePaid / eggs) * 100).toFixed(2))) : ''
+  })
+  const [amountPaid, setAmountPaid] = useState(
+    editingTx ? (editingTx.amountPaid !== undefined ? String(editingTx.amountPaid) : '') : ''
+  )
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(editingTx?.paymentMethod || 'cash')
+  const [notes, setNotes] = useState(editingTx?.notes || '')
   const [savedMsg, setSavedMsg] = useState('')
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
 
@@ -147,28 +159,33 @@ export function TransactionScreen({
     if (!isFormValid) return
 
     let tx: Transaction
+    const txId = editingTx?.id || 't' + uid()
+    const txDate = editingTx?.date || today
+    const txTime = editingTx?.time || getTime()
+
     if (txType === 'sale') {
       const traysEquivalent = eggsCount / 30
       tx = {
-        id: 't' + uid(),
+        id: txId,
         customerId: customer.id,
         type: 'sale',
-        date: today,
-        time: getTime(),
+        date: txDate,
+        time: txTime,
         trays: traysEquivalent,
         amountToBePaid: calculatedAmount,
         amountPaid: paid,
         paymentMethod,
         creditKeptToday,
         creditChange,
+        notes: notes.trim(),
       }
     } else {
       tx = {
-        id: 't' + uid(),
+        id: txId,
         customerId: customer.id,
         type: 'payment',
-        date: today,
-        time: getTime(),
+        date: txDate,
+        time: txTime,
         trays: 0,
         amountToBePaid: 0,
         amountPaid: paid,
@@ -180,7 +197,7 @@ export function TransactionScreen({
     }
 
     onSave(tx, newOutstanding)
-    setSavedMsg('Saved successfully!')
+    setSavedMsg(editingTx ? 'Updated successfully!' : 'Saved successfully!')
     setTimeout(() => {
       setSavedMsg('')
       onBack()

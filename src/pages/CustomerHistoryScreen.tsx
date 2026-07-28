@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Customer, Screen } from '../types'
+import { Customer, Screen, Transaction } from '../types'
 import { RouteEntity } from '../database'
 import { fmtCurrency } from '../utils/format'
 import { fmtDate, today } from '../utils/date'
@@ -12,6 +12,7 @@ import {
   IconPdf,
   IconMoreVertical,
   IconEdit,
+  IconTrash,
   IconCalendar,
   IconHistory,
   IconCheck,
@@ -25,6 +26,8 @@ export function CustomerHistoryScreen({
   routeNames,
   onBack,
   onUpdateCustomer,
+  onEditTransaction,
+  onDeleteTransaction,
 }: {
   customerId: string
   routeId?: string
@@ -33,6 +36,8 @@ export function CustomerHistoryScreen({
   routeNames?: Record<string, string>
   onBack: () => void
   onUpdateCustomer?: (id: string, name: string, subtitle: string, routeId: string, openingCredit?: number) => void
+  onEditTransaction?: (tx: Transaction) => void
+  onDeleteTransaction?: (id: string, customerId: string) => void
 }) {
   const customer = customers[customerId]
 
@@ -50,6 +55,7 @@ export function CustomerHistoryScreen({
   const [editSubtitle, setEditSubtitle] = useState<string>(customer?.subtitle || '')
   const [editRouteId, setEditRouteId] = useState<string>(customer?.routeId || routeId || '')
   const [editOpeningCredit, setEditOpeningCredit] = useState<string>(String(customer?.openingCredit || 0))
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null)
 
   // PDF Export State
   const [isExporting, setIsExporting] = useState<boolean>(false)
@@ -123,6 +129,7 @@ export function CustomerHistoryScreen({
 
       return {
         id: t.id,
+        rawTx: t as Transaction | undefined,
         date: t.date,
         time: t.time || '',
         type: (isSale ? 'sale' : 'payment') as 'sale' | 'payment' | 'opening' | 'adjustment',
@@ -143,6 +150,7 @@ export function CustomerHistoryScreen({
     if (customer.openingCredit && customer.openingCredit > 0) {
       processed.unshift({
         id: 'opening-balance',
+        rawTx: undefined,
         date: today,
         time: '00:00',
         type: 'opening',
@@ -515,9 +523,33 @@ export function CustomerHistoryScreen({
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] font-bold text-slate-400">
-                        {fmtDate(item.date)} {item.time ? `• ${item.time}` : ''}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">
+                          {fmtDate(item.date)} {item.time ? `• ${item.time}` : ''}
+                        </span>
+                        {!isOpening && item.rawTx && (
+                          <div className="flex items-center gap-1">
+                            {onEditTransaction && (
+                              <button
+                                onClick={() => onEditTransaction(item.rawTx!)}
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                title="Edit Transaction"
+                              >
+                                <IconEdit />
+                              </button>
+                            )}
+                            {onDeleteTransaction && (
+                              <button
+                                onClick={() => setTxToDelete(item.rawTx!)}
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete Transaction"
+                              >
+                                <IconTrash />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Card Body Details */}
@@ -648,6 +680,42 @@ export function CustomerHistoryScreen({
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all disabled:opacity-50"
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Transaction Confirmation Modal */}
+      {txToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl border border-slate-200 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-xl font-bold">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Delete Transaction</h3>
+              <p className="text-xs text-slate-600 mt-1">
+                Are you sure you want to delete this transaction?
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setTxToDelete(null)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (txToDelete && onDeleteTransaction) {
+                    onDeleteTransaction(txToDelete.id, txToDelete.customerId)
+                    setTxToDelete(null)
+                  }
+                }}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+              >
+                Delete
               </button>
             </div>
           </div>
