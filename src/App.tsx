@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { App as CapacitorApp } from '@capacitor/app'
 import { Screen, Customer, Expense, EggPurchase, Transaction, BusinessProfile } from './types'
 import { today } from './utils/date'
 import { dbInstance } from './database/database'
@@ -28,8 +29,16 @@ import { RouteEntity } from './database'
 import { recentCustomersService } from './services/recentCustomersService'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 
+export interface StackEntry {
+  screen: Screen
+  routeId?: string
+  customerId?: string
+}
+
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('home')
+  const [navStack, setNavStack] = useState<StackEntry[]>([{ screen: 'home' }])
+  const navStackRef = useRef<StackEntry[]>([{ screen: 'home' }])
+
   const [selectedRouteId, setSelectedRouteId] = useState<string>('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
   const [customers, setCustomers] = useState<Record<string, Customer>>({})
@@ -45,6 +54,13 @@ export default function App() {
   const [showSetupModal, setShowSetupModal] = useState<boolean>(false)
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
   const [backupReminder, setBackupReminder] = useState<{ show: boolean; days: number }>({ show: false, days: 0 })
+
+  useEffect(() => {
+    navStackRef.current = navStack
+  }, [navStack])
+
+  const currentStackEntry = navStack[navStack.length - 1] || { screen: 'home' }
+  const screen = currentStackEntry.screen
 
   const loadAppData = async () => {
     await dbInstance.initDatabase()
@@ -99,6 +115,89 @@ export default function App() {
     initApp()
   }, [])
 
+  const pushNavigate = (s: Screen, rId?: string, cId?: string) => {
+    if (s === 'home') {
+      const homeStack: StackEntry[] = [{ screen: 'home' }]
+      navStackRef.current = homeStack
+      setNavStack(homeStack)
+      return
+    }
+
+    const targetRouteId = rId !== undefined ? rId : selectedRouteId
+    const targetCustomerId = cId !== undefined ? cId : selectedCustomerId
+
+    if (cId) {
+      recentCustomersService.addRecentCustomer(cId).then(setRecentCustomerIds)
+    }
+
+    const currentTop = navStackRef.current[navStackRef.current.length - 1]
+    if (
+      currentTop &&
+      currentTop.screen === s &&
+      currentTop.routeId === targetRouteId &&
+      currentTop.customerId === targetCustomerId
+    ) {
+      return
+    }
+
+    const entry: StackEntry = { screen: s, routeId: targetRouteId, customerId: targetCustomerId }
+    const newStack = [...navStackRef.current, entry]
+    navStackRef.current = newStack
+    setNavStack(newStack)
+
+    if (targetRouteId) setSelectedRouteId(targetRouteId)
+    if (targetCustomerId) setSelectedCustomerId(targetCustomerId)
+  }
+
+  const goBack = () => {
+    if (navStackRef.current.length > 1) {
+      const newStack = navStackRef.current.slice(0, -1)
+      navStackRef.current = newStack
+      setNavStack(newStack)
+
+      const prev = newStack[newStack.length - 1]
+      if (prev.routeId !== undefined) setSelectedRouteId(prev.routeId)
+      if (prev.customerId !== undefined) setSelectedCustomerId(prev.customerId)
+
+      if (prev.screen !== 'transaction') {
+        setEditingTransaction(undefined)
+      }
+    } else {
+      CapacitorApp.exitApp()
+    }
+  }
+
+  useEffect(() => {
+    let backListener: any = null
+
+    const setupBackButton = async () => {
+      try {
+        backListener = await CapacitorApp.addListener('backButton', () => {
+          if (showMenu) {
+            setShowMenu(false)
+            return
+          }
+
+          if (navStackRef.current.length > 1) {
+            goBack()
+          } else {
+            CapacitorApp.exitApp()
+          }
+        })
+      } catch (_) {
+        // Hardware back button listener unavailable (e.g. running in web browser)
+      }
+    }
+
+    setupBackButton()
+
+    return () => {
+      if (backListener && typeof backListener.remove === 'function') {
+        backListener.remove()
+      }
+    }
+  }, [showMenu])
+
   const handleSaveInitialProfile = async (profileData: Partial<BusinessProfile>) => {
     const updated = await businessProfileService.saveProfile(profileData)
     setBusinessProfile(updated)
@@ -112,12 +211,7 @@ export default function App() {
   }
 
   const navigate = (s: Screen, rId?: string, cId?: string) => {
-    setScreen(s)
-    if (rId) setSelectedRouteId(rId)
-    if (cId) {
-      setSelectedCustomerId(cId)
-      recentCustomersService.addRecentCustomer(cId).then(setRecentCustomerIds)
-    }
+    pushNavigate(s, rId, cId)
   }
 
   const handleCreateRoute = async (name: string) => {
@@ -139,7 +233,7 @@ export default function App() {
     const custRes = await customerService.fetchCustomersAndRoutes()
     setCustomers(custRes.customers)
     setRouteCustomerMap(custRes.routeCustomerMap)
-    setScreen('home')
+    pushNavigate('home')
   }
 
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined)
@@ -159,7 +253,7 @@ export default function App() {
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx)
     setSelectedCustomerId(tx.customerId)
-    setScreen('transaction')
+    pushNavigate('transaction', selectedRouteId, tx.customerId)
   }
 
   const handleDeleteTransaction = async (id: string, customerId: string) => {
@@ -240,7 +334,7 @@ export default function App() {
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           }}
         >
-          <ErrorBoundary key={screen} onReset={() => setScreen('home')}>
+          <ErrorBoundary key={screen} onReset={() => pushNavigate('home')}>
             {screen === 'home' && (
               <HomeScreen
                 customers={customers}
@@ -263,7 +357,7 @@ export default function App() {
                 routes={routes}
                 routeNames={routeNames}
                 navigate={navigate}
-                onBack={() => setScreen('home')}
+                onBack={goBack}
                 onSaveRouteCustomers={handleSaveRouteCustomers}
                 onDeleteCustomer={handleDeleteCustomer}
                 onCreateCustomer={handleCreateCustomer}
@@ -277,11 +371,9 @@ export default function App() {
               <TransactionScreen
                 customer={selectedCustomer}
                 editingTx={editingTransaction}
-                onBack={() => {
-                  setEditingTransaction(undefined)
-                  setScreen('route')
-                }}
+                onBack={goBack}
                 onSave={handleSaveTransaction}
+                onOpenLedger={() => navigate('customer_history', selectedRouteId, selectedCustomer.id)}
               />
             )}
             {screen === 'customer_history' && (
@@ -291,10 +383,11 @@ export default function App() {
                 customers={customers}
                 routes={routes}
                 routeNames={routeNames}
-                onBack={() => setScreen('route')}
+                onBack={goBack}
                 onUpdateCustomer={handleUpdateCustomer}
                 onEditTransaction={handleEditTransaction}
                 onDeleteTransaction={handleDeleteTransaction}
+                onNavigate={(s) => pushNavigate(s)}
               />
             )}
             {screen === 'history' && (
@@ -317,7 +410,7 @@ export default function App() {
             )}
             {screen === 'expenses' && (
               <AddExpenseScreen
-                onBack={() => setScreen('home')}
+                onBack={goBack}
                 onSaveExpense={handleSaveExpense}
               />
             )}

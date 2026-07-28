@@ -26,6 +26,7 @@ import {
 } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { TransactionBadge, PaymentMethodBadge } from '../components/common/TransactionBadges'
 
 export type ReportType =
   | 'customer_statement'
@@ -360,18 +361,14 @@ export function ReportsScreen({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {statementData.ledger.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="p-2.5 font-medium text-gray-800">{fmtDate(item.date)}</td>
-                            <td className="p-2.5 font-bold">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] ${
-                                  item.type === 'sale' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                                }`}
-                              >
-                                {item.type === 'sale' ? 'Sale' : 'Payment'}
-                              </span>
-                            </td>
+                        {statementData.ledger.map((item, idx) => {
+                          const txLike = { type: item.type, amountToBePaid: item.debit, amountPaid: item.credit }
+                          return (
+                            <tr key={idx} className="hover:bg-gray-50">
+                              <td className="p-2.5 font-medium text-gray-800">{fmtDate(item.date)}</td>
+                              <td className="p-2.5 font-bold">
+                                <TransactionBadge tx={txLike} />
+                              </td>
                             <td className="p-2.5 text-gray-900">{item.description}</td>
                             <td className="p-2.5 text-center text-gray-600 font-medium">
                               {item.totalEggs > 0 ? `${item.totalEggs} eggs` : '-'}
@@ -386,7 +383,7 @@ export function ReportsScreen({
                               {fmtCurrency(item.runningBalance)}
                             </td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>

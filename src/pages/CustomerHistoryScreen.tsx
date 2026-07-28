@@ -2,11 +2,12 @@ import { useState, useMemo } from 'react'
 import { Customer, Screen, Transaction } from '../types'
 import { RouteEntity } from '../database'
 import { fmtCurrency } from '../utils/format'
-import { fmtDate, today } from '../utils/date'
+import { fmtDate, today, parseOpeningBalanceTimestamp, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
 import { pdfReportDataService, DateRange, resolveDateRange, DateFilterOption } from '../services/pdfReportDataService'
 import { generateCustomerStatementPdf } from '../services/pdfGenerator'
-import { fileService, FileActionResult } from '../services/fileService'
+import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { TransactionBadge, PaymentMethodBadge, TransactionDot } from '../components/common/TransactionBadges'
 import {
   IconBack,
   IconPdf,
@@ -14,8 +15,6 @@ import {
   IconEdit,
   IconTrash,
   IconCalendar,
-  IconHistory,
-  IconCheck,
 } from '../components/common/Icons'
 
 export function CustomerHistoryScreen({
@@ -38,6 +37,7 @@ export function CustomerHistoryScreen({
   onUpdateCustomer?: (id: string, name: string, subtitle: string, routeId: string, openingCredit?: number) => void
   onEditTransaction?: (tx: Transaction) => void
   onDeleteTransaction?: (id: string, customerId: string) => void
+  onNavigate?: (screen: Screen) => void
 }) {
   const customer = customers[customerId]
 
@@ -79,7 +79,7 @@ export function CustomerHistoryScreen({
   }, [dateFilter, customStart, customEnd])
 
   // Calculate timeline & metrics
-  const { allTimeline, filteredTimeline, metrics } = useMemo(() => {
+  const { filteredTimeline, metrics } = useMemo(() => {
     if (!customer) {
       return {
         allTimeline: [],
@@ -96,36 +96,12 @@ export function CustomerHistoryScreen({
     }
 
     const rawTxs = customer.transactions || []
-    const sortedTxs = [...rawTxs].sort((a, b) => {
-      const cmp = a.date.localeCompare(b.date)
-      if (cmp !== 0) return cmp
-      return (a.time || '').localeCompare(b.time || '')
-    })
-
-    // Compute running balances
-    let running = Number(customer.openingCredit) || 0
-    let totalEggs = 0
-    let totalTrays = 0
-    let totalSales = 0
-    let totalPaid = 0
-    let lastDate: string | null = null
-
-    const processed = sortedTxs.map(t => {
+    const rawItems: Array<any> = rawTxs.map(t => {
       const billed = Number(t.amountToBePaid) || 0
       const paid = Number(t.amountPaid) || 0
       const trays = Number(t.trays) || 0
       const eggs = Math.round(trays * 30)
-
-      running += billed - paid
-
-      totalSales += billed
-      totalPaid += paid
-      totalTrays += trays
-      totalEggs += eggs
-      if (t.date) lastDate = t.date
-
       const isSale = t.type === 'sale' || trays > 0 || billed > 0
-      const ratePer100 = eggs > 0 ? (billed / eggs) * 100 : 0
 
       return {
         id: t.id,
@@ -135,24 +111,25 @@ export function CustomerHistoryScreen({
         type: (isSale ? 'sale' : 'payment') as 'sale' | 'payment' | 'opening' | 'adjustment',
         trays,
         totalEggs: eggs,
-        ratePer100,
+        ratePer100: eggs > 0 ? (billed / eggs) * 100 : 0,
         billed,
         paid,
         paymentMethod: t.paymentMethod || 'cash',
         creditKeptToday: Number(t.creditKeptToday) || 0,
         creditChange: Number(t.creditChange) || 0,
-        runningBalance: running,
         notes: t.notes || '',
       }
     })
 
     // Add Opening Balance item if exists
     if (customer.openingCredit && customer.openingCredit > 0) {
-      processed.unshift({
+      const timestamp = (customer as any).openingCreditCreatedAt || (customer as any).createdAt
+      const { date: openingDate, time: openingTime } = parseOpeningBalanceTimestamp(timestamp)
+      rawItems.push({
         id: 'opening-balance',
         rawTx: undefined,
-        date: today,
-        time: '00:00',
+        date: openingDate,
+        time: openingTime,
         type: 'opening',
         trays: 0,
         totalEggs: 0,
@@ -162,17 +139,38 @@ export function CustomerHistoryScreen({
         paymentMethod: 'cash',
         creditKeptToday: 0,
         creditChange: customer.openingCredit,
-        runningBalance: customer.openingCredit,
         notes: 'Initial Opening Credit',
       })
     }
 
+    // Sort chronologically (oldest first)
+    rawItems.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time))
+
+    // Compute running balances & metrics
+    let running = 0
+    let totalEggs = 0
+    let totalTrays = 0
+    let totalSales = 0
+    let totalPaid = 0
+    let lastDate: string | null = null
+
+    const processed = rawItems.map(item => {
+      if (item.type !== 'opening') {
+        totalSales += item.billed
+        totalPaid += item.paid
+        totalTrays += item.trays
+        totalEggs += item.totalEggs
+        if (item.date) lastDate = item.date
+      }
+      running += item.billed - item.paid
+      return { ...item, runningBalance: running }
+    })
+
     // Newest transactions first for timeline
-    const reverseTimeline = [...processed].reverse()
+    const reverseTimeline = [...processed].sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time))
 
     // Filter by type & date
     const filtered = reverseTimeline.filter(item => {
-      // Date filter
       if (dateFilter !== 'all_time' as any) {
         if (item.date < dateRange.startDate || item.date > dateRange.endDate) {
           return false
@@ -492,64 +490,56 @@ export function CustomerHistoryScreen({
                 const isPayment = item.type === 'payment'
                 const isOpening = item.type === 'opening'
 
-                const nodeBg = isSale
-                  ? 'bg-emerald-500'
-                  : isPayment
-                  ? 'bg-blue-500'
-                  : 'bg-slate-400'
-
-                const badgeBg = isSale
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : isPayment
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : 'bg-slate-50 text-slate-700 border-slate-200'
+                const txLike = {
+                  type: item.type,
+                  amountToBePaid: item.billed,
+                  amountPaid: item.paid,
+                  creditKeptToday: item.creditKeptToday,
+                  trays: item.trays,
+                }
 
                 return (
                   <div key={item.id} className="relative bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
                     {/* Timeline Node Point */}
-                    <div
-                      className={`absolute -left-[19px] top-4 w-3.5 h-3.5 rounded-full border-2 border-white ${nodeBg} shadow-2xs`}
-                    />
+                    <TransactionDot tx={txLike} className="absolute -left-[19px] top-4" />
 
-                    {/* Card Header: Type Badge & Date */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${badgeBg}`}>
-                          {isSale ? '🛒 Sale' : isPayment ? '💳 Payment Received' : '🏁 Opening Credit'}
-                        </span>
-                        {item.paymentMethod && isPayment && (
-                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
-                            {item.paymentMethod}
+                    {/* Card Header: Row 1 (Type Badge & Date), Row 2 (Payment Method Badge) */}
+                    <div className="flex flex-col gap-1.5 mb-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <TransactionBadge tx={txLike} />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">
+                            {fmtDate(item.date)} {item.time ? `• ${item.time}` : ''}
                           </span>
-                        )}
+                          {!isOpening && item.rawTx && (
+                            <div className="flex items-center gap-1">
+                              {onEditTransaction && (
+                                <button
+                                  onClick={() => onEditTransaction(item.rawTx!)}
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                  title="Edit Transaction"
+                                >
+                                  <IconEdit />
+                                </button>
+                              )}
+                              {onDeleteTransaction && (
+                                <button
+                                  onClick={() => setTxToDelete(item.rawTx!)}
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors"
+                                  title="Delete Transaction"
+                                >
+                                  <IconTrash />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-slate-400">
-                          {fmtDate(item.date)} {item.time ? `• ${item.time}` : ''}
-                        </span>
-                        {!isOpening && item.rawTx && (
-                          <div className="flex items-center gap-1">
-                            {onEditTransaction && (
-                              <button
-                                onClick={() => onEditTransaction(item.rawTx!)}
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 transition-colors"
-                                title="Edit Transaction"
-                              >
-                                <IconEdit />
-                              </button>
-                            )}
-                            {onDeleteTransaction && (
-                              <button
-                                onClick={() => setTxToDelete(item.rawTx!)}
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 transition-colors"
-                                title="Delete Transaction"
-                              >
-                                <IconTrash />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      {!isOpening && (
+                        <div>
+                          <PaymentMethodBadge method={item.paymentMethod} amountPaid={item.paid} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Card Body Details */}
@@ -578,7 +568,7 @@ export function CustomerHistoryScreen({
                     ) : isPayment ? (
                       <div className="space-y-1.5 border-t border-slate-100 pt-2 text-xs">
                         <div className="flex items-center justify-between font-extrabold text-slate-900">
-                          <span>Payment Received ({item.paymentMethod.toUpperCase()})</span>
+                          <span>Payment Received</span>
                           <span className="text-blue-700 font-black text-sm">
                             - {fmtCurrency(item.paid)}
                           </span>

@@ -40,6 +40,7 @@ export interface Customer {
   routeId: string
   openingCredit: number
   outstandingCredit: number
+  openingCreditCreatedAt?: string
   transactions: Transaction[]
 }
 

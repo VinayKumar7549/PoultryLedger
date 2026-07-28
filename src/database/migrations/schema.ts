@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS customers (
   route_id TEXT NOT NULL,
   opening_credit REAL NOT NULL DEFAULT 0,
   outstanding_credit REAL NOT NULL DEFAULT 0,
+  opening_credit_created_at TEXT,
   created_at TEXT NOT NULL DEFAULT (DATETIME('now')),
   updated_at TEXT NOT NULL DEFAULT (DATETIME('now')),
   FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE

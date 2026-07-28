@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Customer, PaymentMethod, Transaction, TransactionType, BusinessProfile } from '../types'
 import { today, getTime, uid } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
-import { IconBack } from '../components/common/Icons'
+import { IconBack, IconHistory } from '../components/common/Icons'
 import { businessProfileService } from '../services/businessProfileService'
 import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
@@ -10,11 +10,13 @@ export function TransactionScreen({
   customer,
   onBack,
   onSave,
+  onOpenLedger,
   editingTx,
 }: {
   customer: Customer
   onBack: () => void
   onSave: (tx: Transaction, updatedOutstanding: number) => void
+  onOpenLedger?: () => void
   editingTx?: Transaction
 }) {
   const [txType, setTxType] = useState<TransactionType>(editingTx?.type || 'sale')
@@ -220,14 +222,14 @@ export function TransactionScreen({
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
         {/* Outstanding credit badge */}
         <div
-          className="rounded-2xl p-4 flex items-center justify-between"
+          className="rounded-2xl p-4 flex items-center justify-between gap-3"
           style={{
             background: customer.outstandingCredit > 0 ? '#fff5f5' : '#f0fdf4',
             border: '1.5px solid',
             borderColor: customer.outstandingCredit > 0 ? '#fecaca' : '#bbf7d0',
           }}
         >
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-xs font-600" style={{ color: customer.outstandingCredit > 0 ? '#991b1b' : '#166534', fontWeight: 600 }}>
               Current Outstanding Credit
             </p>
@@ -235,16 +237,29 @@ export function TransactionScreen({
               {fmtCurrency(customer.outstandingCredit)}
             </p>
           </div>
-          <span
-            className="text-xs font-700 px-3 py-1 rounded-full"
-            style={{
-              background: customer.outstandingCredit > 0 ? '#fee2e2' : '#d1fae5',
-              color: customer.outstandingCredit > 0 ? '#dc2626' : '#065f46',
-              fontWeight: 700,
-            }}
-          >
-            {customer.outstandingCredit > 0 ? 'Pending' : 'Clear'}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className="text-xs font-700 px-3 py-1 rounded-full"
+              style={{
+                background: customer.outstandingCredit > 0 ? '#fee2e2' : '#d1fae5',
+                color: customer.outstandingCredit > 0 ? '#dc2626' : '#065f46',
+                fontWeight: 700,
+              }}
+            >
+              {customer.outstandingCredit > 0 ? 'Pending' : 'Clear'}
+            </span>
+            {onOpenLedger && (
+              <button
+                type="button"
+                onClick={onOpenLedger}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                style={{ background: '#e0e7ff', color: '#3730a3' }}
+              >
+                <IconHistory />
+                <span>Ledger</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Transaction Type Segmented Switcher */}

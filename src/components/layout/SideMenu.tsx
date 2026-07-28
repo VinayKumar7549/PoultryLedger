@@ -121,10 +121,7 @@ export function SideMenu({
           <div className="flex items-center gap-3">
             <IconBrandLogoBadge size="md" />
             <div className="overflow-hidden max-w-[170px]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold text-white truncate">PoultryLedger</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v1.0</span>
-              </div>
+              <span className="text-base font-extrabold text-white truncate">PoultryLedger</span>
               <p className="text-[11px] font-semibold text-emerald-400 truncate mt-0.5">
                 {profile?.businessName || 'Sai Egg Center'}
               </p>
@@ -215,7 +212,7 @@ export function SideMenu({
             <IconBrandLogoBadge size="xl" />
             <div>
               <h2 className="text-xl font-black text-gray-900">PoultryLedger</h2>
-              <p className="text-xs font-bold text-emerald-600 mt-0.5">The Smart Egg Ledger • v1.0.0</p>
+              <p className="text-xs font-bold text-emerald-600 mt-0.5">The Smart Egg Ledger</p>
             </div>
             <p className="text-xs text-gray-600 leading-relaxed font-medium bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
               Offline business ledger app designed specifically for egg wholesalers, poultry distributors, and retail shop owners to track sales, Udhar credit, inventory & bills.

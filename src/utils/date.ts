@@ -28,7 +28,85 @@ export const fmtDate = (iso: string): string => {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export const getTime = (): string =>
-  new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+export const getTime = (d: Date = new Date()): string =>
+  d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+
+export const timeTo24h = (timeStr?: string): string => {
+  if (!timeStr) return '00:00'
+  const trimmed = timeStr.trim().toUpperCase()
+  const match12 = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/)
+  if (match12) {
+    let hours = parseInt(match12[1], 10)
+    const minutes = match12[2]
+    const period = match12[3]
+    if (period === 'PM' && hours < 12) hours += 12
+    if (period === 'AM' && hours === 12) hours = 0
+    return `${String(hours).padStart(2, '0')}:${minutes}`
+  }
+  const match24 = trimmed.match(/^(\d{1,2}):(\d{2})/)
+  if (match24) {
+    const hours = String(parseInt(match24[1], 10)).padStart(2, '0')
+    const minutes = match24[2]
+    return `${hours}:${minutes}`
+  }
+  return '00:00'
+}
+
+export const compareTimestampsAsc = (
+  dateA: string = '',
+  timeA: string = '',
+  dateB: string = '',
+  timeB: string = ''
+): number => {
+  const cmpDate = (dateA || '').localeCompare(dateB || '')
+  if (cmpDate !== 0) return cmpDate
+  return timeTo24h(timeA).localeCompare(timeTo24h(timeB))
+}
+
+export const compareTimestampsDesc = (
+  dateA: string = '',
+  timeA: string = '',
+  dateB: string = '',
+  timeB: string = ''
+): number => {
+  return compareTimestampsAsc(dateB, timeB, dateA, timeA)
+}
+
+export const parseOpeningBalanceTimestamp = (tsStr?: string): { date: string; time: string } => {
+  if (!tsStr) {
+    return { date: today, time: getTime() }
+  }
+
+  const d = new Date(tsStr)
+  if (!isNaN(d.getTime())) {
+    return {
+      date: toIso(d),
+      time: getTime(d),
+    }
+  }
+
+  if (tsStr.includes('T') || tsStr.includes(' ')) {
+    const parts = tsStr.split(/[T ]/)
+    const date = parts[0] || today
+    let rawTime = '00:00'
+    if (parts[1]) {
+      const cleanTime = parts[1].substring(0, 5)
+      const mockDate = new Date(`${date}T${cleanTime}:00`)
+      if (!isNaN(mockDate.getTime())) {
+        rawTime = getTime(mockDate)
+      } else {
+        rawTime = cleanTime
+      }
+    }
+    return { date, time: rawTime }
+  }
+
+  if (tsStr.length >= 10) {
+    return { date: tsStr.substring(0, 10), time: getTime() }
+  }
+
+  return { date: today, time: getTime() }
+}
 
 export const uid = (): string => Math.random().toString(36).slice(2, 9)
+

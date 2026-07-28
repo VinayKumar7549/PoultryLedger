@@ -107,7 +107,7 @@ class BackupService {
       databaseSchemaVersion: this.CURRENT_SCHEMA_VERSION,
       backupTimestamp: new Date().toISOString(),
       businessName,
-      generatedBy: 'PoultryLedger v1.0.0',
+      generatedBy: 'PoultryLedger',
       recordCounts,
     }
 
@@ -385,7 +385,7 @@ class BackupService {
       // 3. Insert Customers
       for (const c of backupData.data.customers || []) {
         await dbInstance.execute(
-          'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
+          'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, opening_credit_created_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);',
           [
             c.id,
             c.name,
@@ -393,6 +393,7 @@ class BackupService {
             c.route_id,
             c.opening_credit || 0,
             c.outstanding_credit || 0,
+            c.opening_credit_created_at || null,
             c.created_at || now,
             c.updated_at || now,
           ]
@@ -524,8 +525,8 @@ class BackupService {
 
       for (const c of backupData.data.customers || []) {
         await dbInstance.execute(
-          'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
-          [c.id, c.name, c.subtitle || '', c.route_id, c.opening_credit || 0, c.outstanding_credit || 0, c.created_at || now, c.updated_at || now]
+          'INSERT INTO customers (id, name, subtitle, route_id, opening_credit, outstanding_credit, opening_credit_created_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);',
+          [c.id, c.name, c.subtitle || '', c.route_id, c.opening_credit || 0, c.outstanding_credit || 0, c.opening_credit_created_at || null, c.created_at || now, c.updated_at || now]
         )
       }
 

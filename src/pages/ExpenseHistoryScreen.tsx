@@ -9,6 +9,7 @@ import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../ser
 import { generateExpenseReportPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { PaymentMethodBadge } from '../components/common/TransactionBadges'
 import {
   IconMenu,
   IconCalendar,
@@ -174,8 +175,8 @@ export function ExpenseHistoryScreen({
             >
               <div>
                 <p className="text-sm font-extrabold text-gray-900">{item.purpose}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {item.time || ''} • Paid via {item.paymentMethod.toUpperCase()}
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                  {item.time ? `${item.time} • ` : ''}Paid via <PaymentMethodBadge method={item.paymentMethod} />
                 </p>
               </div>
 

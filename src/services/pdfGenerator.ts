@@ -10,10 +10,11 @@ import {
   MonthlySummaryReport,
 } from './pdfReportDataService'
 import { businessProfileService } from './businessProfileService'
-import { fileService, FileActionResult } from './fileService'
+import { fileService } from './fileService'
 import { BusinessProfile } from '../types'
 import { fmtPdfCurrency } from '../utils/format'
 import { fmtDate } from '../utils/date'
+import { formatPaymentMethodText } from '../components/common/TransactionBadges'
 
 /**
  * Creates base jsPDF instance configured for A4 Portrait with 15mm margins
@@ -116,7 +117,7 @@ function attachFooter(doc: jsPDF) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(100, 116, 139) // Slate 500
-    doc.text('Generated using PoultryLedger v1.0.0 • The Smart Egg Ledger', 15, pageHeight - 6)
+    doc.text('Generated using PoultryLedger • The Smart Egg Ledger', 15, pageHeight - 6)
 
     // Right Footer
     doc.setFont('helvetica', 'bold')
@@ -214,6 +215,7 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
     '-',
     '-',
     '-',
+    '',
     fmtPdfCurrency(report.openingBalance),
   ])
 
@@ -223,6 +225,9 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
     const saleAmtStr = item.debit > 0 ? fmtPdfCurrency(item.debit) : '-'
     const pymtAmtStr = item.credit > 0 ? fmtPdfCurrency(item.credit) : '-'
     const typeStr = item.type === 'sale' ? 'Sale' : 'Payment'
+    const pymtMethodStr = item.credit > 0
+      ? ((item.paymentMethod || '').toLowerCase().trim() === 'cash' ? 'Cash' : 'Online')
+      : ''
 
     tableBody.push([
       `${fmtDate(item.date)} ${item.time || ''}`.trim(),
@@ -232,6 +237,7 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
       rateStr,
       saleAmtStr,
       pymtAmtStr,
+      pymtMethodStr,
       fmtPdfCurrency(item.runningBalance),
     ])
   })
@@ -244,6 +250,7 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
     '-',
     fmtPdfCurrency(report.totalBilled),
     fmtPdfCurrency(report.totalPaid),
+    '',
     fmtPdfCurrency(report.closingBalance),
   ])
 
@@ -251,7 +258,7 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
     startY: ledgerY,
     margin: { left: 15, right: 15, top: 15, bottom: 15 },
     showHead: 'everyPage',
-    head: [['Date', 'Description', 'Type', 'Egg Quantity', 'Rate / 100', 'Sale Amount', 'Payment Amount', 'Running Balance']],
+    head: [['Date', 'Description', 'Type', 'Egg Quantity', 'Rate / 100', 'Sale Amount', 'Payment Amount', 'Payment Method', 'Running Balance']],
     body: tableBody,
     theme: 'plain',
     headStyles: {
@@ -272,14 +279,15 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
       lineColor: [0, 0, 0],
     },
     columnStyles: {
-      0: { cellWidth: 26, halign: 'center' },
-      1: { cellWidth: 42, halign: 'left' },
-      2: { cellWidth: 15, halign: 'center' },
-      3: { cellWidth: 25, halign: 'center' },
-      4: { cellWidth: 18, halign: 'right' },
-      5: { cellWidth: 18, halign: 'right' },
-      6: { cellWidth: 18, halign: 'right' },
-      7: { cellWidth: 18, halign: 'right', fontStyle: 'bold' },
+      0: { cellWidth: 24, halign: 'center' },
+      1: { cellWidth: 37, halign: 'left' },
+      2: { cellWidth: 13, halign: 'center' },
+      3: { cellWidth: 22, halign: 'center' },
+      4: { cellWidth: 16, halign: 'right' },
+      5: { cellWidth: 16, halign: 'right' },
+      6: { cellWidth: 16, halign: 'right' },
+      7: { cellWidth: 18, halign: 'center' },
+      8: { cellWidth: 18, halign: 'right', fontStyle: 'bold' },
     },
     didParseCell: (data) => {
       if (data.row.index === 0 || data.row.index === tableBody.length - 1) {
@@ -498,7 +506,7 @@ export async function generateExpenseReportPdf(report: ExpenseReport) {
     (idx + 1).toString(),
     `${fmtDate(exp.date)} ${exp.time || ''}`.trim(),
     exp.purpose,
-    exp.paymentMethod.toUpperCase(),
+    formatPaymentMethodText(exp.paymentMethod),
     fmtPdfCurrency(exp.amount),
   ])
 

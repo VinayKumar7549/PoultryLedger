@@ -9,6 +9,7 @@ import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../ser
 import { generateDailySummaryPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { TransactionBadge, PaymentMethodBadge } from '../components/common/TransactionBadges'
 import {
   IconMenu,
   IconCalendar,
@@ -251,39 +252,38 @@ export function HistoryScreen({
                 key={tx.id}
                 className="p-4 rounded-2xl border border-gray-100 bg-white shadow-xs flex flex-col gap-2.5"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-gray-900">{customer.name}</h3>
-                    {customer.subtitle && (
-                      <p className="text-xs text-gray-500">{customer.subtitle}</p>
-                    )}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-gray-900">{customer.name}</h3>
+                      {customer.subtitle && (
+                        <p className="text-xs text-gray-500">{customer.subtitle}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <TransactionBadge tx={tx} />
+                      {onEditTransaction && (
+                        <button
+                          onClick={() => onEditTransaction(tx)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors"
+                          title="Edit Transaction"
+                        >
+                          <IconEdit />
+                        </button>
+                      )}
+                      {onDeleteTransaction && (
+                        <button
+                          onClick={() => setTxToDelete({ tx, customerName: customer.name })}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
+                          title="Delete Transaction"
+                        >
+                          <IconTrash />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
-                        isPayment ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}
-                    >
-                      {isPayment ? 'Payment' : 'Sale'}
-                    </span>
-                    {onEditTransaction && (
-                      <button
-                        onClick={() => onEditTransaction(tx)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100 transition-colors"
-                        title="Edit Transaction"
-                      >
-                        <IconEdit />
-                      </button>
-                    )}
-                    {onDeleteTransaction && (
-                      <button
-                        onClick={() => setTxToDelete({ tx, customerName: customer.name })}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
-                        title="Delete Transaction"
-                      >
-                        <IconTrash />
-                      </button>
-                    )}
+                  <div>
+                    <PaymentMethodBadge method={tx.paymentMethod} amountPaid={tx.amountPaid} />
                   </div>
                 </div>
 
@@ -298,7 +298,7 @@ export function HistoryScreen({
                       </span>
                     )}
                     <span className="font-bold text-emerald-700">
-                      Paid: {fmtCurrency(tx.amountPaid)} ({tx.paymentMethod.toUpperCase()})
+                      Paid: {fmtCurrency(tx.amountPaid)}
                     </span>
                   </div>
                 </div>

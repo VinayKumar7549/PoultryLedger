@@ -2,7 +2,7 @@ import { transactionRepository, customerRepository } from '../database'
 import { dbInstance } from '../database/database'
 import { entityToTransaction } from './transactionService'
 import { Transaction } from '../types'
-import { today } from '../utils/date'
+import { parseOpeningBalanceTimestamp, compareTimestampsDesc } from '../utils/date'
 
 export interface CreditTimelineEntry {
   tx: Transaction
@@ -10,28 +10,6 @@ export interface CreditTimelineEntry {
   creditAdded: number
   creditReduced: number
   isOpeningBalance?: boolean
-}
-
-function parseCreatedAtDate(createdAt?: string): { date: string; time: string } {
-  if (!createdAt) {
-    return { date: today, time: '00:00' }
-  }
-  let dateStr = today
-  let timeStr = '00:00'
-
-  if (createdAt.includes('T')) {
-    const parts = createdAt.split('T')
-    dateStr = parts[0]
-    if (parts[1]) timeStr = parts[1].substring(0, 5)
-  } else if (createdAt.includes(' ')) {
-    const parts = createdAt.split(' ')
-    dateStr = parts[0]
-    if (parts[1]) timeStr = parts[1].substring(0, 5)
-  } else if (createdAt.length >= 10) {
-    dateStr = createdAt.substring(0, 10)
-  }
-
-  return { date: dateStr, time: timeStr }
 }
 
 class CreditService {
@@ -75,7 +53,8 @@ class CreditService {
 
       // Add Opening Balance transaction if openingCredit > 0
       if (custEntity && openingCredit > 0) {
-        const { date: openingDate, time: openingTime } = parseCreatedAtDate(custEntity.created_at)
+        const timestamp = custEntity.opening_credit_created_at || custEntity.created_at
+        const { date: openingDate, time: openingTime } = parseOpeningBalanceTimestamp(timestamp)
         const openingTx: Transaction = {
           id: `opening-${customerId}`,
           customerId,
@@ -94,11 +73,7 @@ class CreditService {
       }
 
       // Sort newest transaction first (Date DESC, Time DESC)
-      transactions.sort((a, b) => {
-        const dateTimeA = `${a.date || ''} ${a.time || ''}`
-        const dateTimeB = `${b.date || ''} ${b.time || ''}`
-        return dateTimeB.localeCompare(dateTimeA)
-      })
+      transactions.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time))
 
       let runningCredit = currentOutstanding
       const historyEntries: CreditTimelineEntry[] = []

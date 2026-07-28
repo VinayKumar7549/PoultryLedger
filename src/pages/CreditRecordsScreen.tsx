@@ -9,6 +9,7 @@ import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../ser
 import { generateCustomerStatementPdf, generateCreditReportPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
+import { TransactionBadge, PaymentMethodBadge, TransactionDot } from '../components/common/TransactionBadges'
 import {
   IconMenu,
   IconBack,
@@ -192,20 +193,24 @@ export function CreditRecordsScreen({
                     key={tx.id}
                     className="p-3.5 rounded-2xl border border-gray-100 bg-gray-50 flex flex-col gap-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isPayment ? 'bg-emerald-500' : 'bg-red-500'
-                          }`}
-                        />
-                        <p className="text-xs font-bold text-gray-900">
-                          {isPayment ? 'Payment Received' : `Egg Sale (${tx.trays} Trays)`}
-                        </p>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <TransactionDot tx={tx} />
+                          <TransactionBadge tx={tx} />
+                          {!isPayment && (
+                            <span className="text-xs font-bold text-gray-700">
+                              ({tx.trays} Trays)
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                          {fmtDate(tx.date)} {tx.time}
+                        </span>
                       </div>
-                      <span className="text-[11px] text-gray-500">
-                        {fmtDate(tx.date)} {tx.time}
-                      </span>
+                      <div>
+                        <PaymentMethodBadge method={tx.paymentMethod} amountPaid={tx.amountPaid} />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-200">

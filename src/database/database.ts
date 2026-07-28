@@ -170,8 +170,9 @@ class WebInMemoryDB {
         route_id: values[3],
         opening_credit: values[4],
         outstanding_credit: values[5],
-        created_at: values[6],
-        updated_at: values[7],
+        opening_credit_created_at: values[6],
+        created_at: values[7],
+        updated_at: values[8],
       }
       this.tables.customers = this.tables.customers.filter(c => String(c.id) !== String(item.id))
       this.tables.customers.push(item)
@@ -190,7 +191,8 @@ class WebInMemoryDB {
           route_id: values[2],
           opening_credit: values[3],
           outstanding_credit: values[4],
-          updated_at: values[5],
+          opening_credit_created_at: values[5],
+          updated_at: values[6],
         }
         this.save()
       }
@@ -491,6 +493,11 @@ class Database {
         await this.db.execute(INITIAL_SCHEMA_SQL)
         try {
           await this.db.execute('ALTER TABLE customers ADD COLUMN opening_credit REAL NOT NULL DEFAULT 0;')
+        } catch {
+          // Column already exists
+        }
+        try {
+          await this.db.execute('ALTER TABLE customers ADD COLUMN opening_credit_created_at TEXT;')
         } catch {
           // Column already exists
         }

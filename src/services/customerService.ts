@@ -38,6 +38,7 @@ class CustomerService {
         routeId: rId,
         openingCredit,
         outstandingCredit: calculatedOutstanding,
+        openingCreditCreatedAt: entity.opening_credit_created_at,
         transactions: custTx,
       }
 
@@ -57,10 +58,12 @@ class CustomerService {
     routeId: string
     openingCredit?: number
     outstandingCredit?: number
+    openingCreditCreatedAt?: string
   }): Promise<{ customers: Record<string, Customer>; routeCustomerMap: Record<string, string[]> }> {
     const newId = data.id || 'c' + uid()
     const opening = data.openingCredit || 0
     const outstanding = data.outstandingCredit !== undefined ? data.outstandingCredit : opening
+    const openingCreatedAt = opening > 0 ? (data.openingCreditCreatedAt || new Date().toISOString()) : undefined
     await customerRepository.create({
       id: newId,
       name: data.name,
@@ -68,6 +71,7 @@ class CustomerService {
       route_id: data.routeId,
       opening_credit: opening,
       outstanding_credit: outstanding,
+      opening_credit_created_at: openingCreatedAt,
     })
     return await this.fetchCustomersAndRoutes()
   }
@@ -85,12 +89,24 @@ class CustomerService {
     const totalPayments = txs.reduce((sum, t) => sum + (t.amountPaid || 0), 0)
     const calculatedOutstanding = newOpeningCredit + totalSales - totalPayments
 
+    let openingCreatedAt = existing.opening_credit_created_at
+    if (newOpeningCredit > 0) {
+      if (fields.openingCreditCreatedAt !== undefined) {
+        openingCreatedAt = fields.openingCreditCreatedAt
+      } else if (!openingCreatedAt) {
+        openingCreatedAt = new Date().toISOString()
+      }
+    } else {
+      openingCreatedAt = undefined
+    }
+
     await customerRepository.update(id, {
       name: fields.name,
       subtitle: fields.subtitle,
       route_id: fields.routeId,
       opening_credit: newOpeningCredit,
       outstanding_credit: calculatedOutstanding,
+      opening_credit_created_at: openingCreatedAt,
     })
     return await this.fetchCustomersAndRoutes()
   }
