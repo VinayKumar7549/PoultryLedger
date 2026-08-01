@@ -7,7 +7,6 @@ import { CustomEggTypeSelect } from '../components/common/CustomEggTypeSelect'
 import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
-import { generateInventoryReportPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import {
@@ -57,6 +56,7 @@ export function InventoryScreen({
       const range = resolveDateRange(filter, customStart, customEnd)
       const reportData = await pdfReportDataService.getInventoryReport(range)
       if (reportData) {
+        const { generateInventoryReportPdf } = await import('../services/pdfGenerator')
         const res = await generateInventoryReportPdf(reportData)
         if (res && res.success) {
           setExportSuccessDetails(res)

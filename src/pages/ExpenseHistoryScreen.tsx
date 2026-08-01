@@ -6,7 +6,6 @@ import { historyService } from '../services/historyService'
 import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
-import { generateExpenseReportPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import { PaymentMethodBadge } from '../components/common/TransactionBadges'
@@ -62,6 +61,7 @@ export function ExpenseHistoryScreen({
       const range = resolveDateRange(filter, customStart, customEnd)
       const reportData = await pdfReportDataService.getExpenseReport(range)
       if (reportData) {
+        const { generateExpenseReportPdf } = await import('../services/pdfGenerator')
         const res = await generateExpenseReportPdf(reportData)
         if (res && res.success) {
           setExportSuccessDetails(res)
@@ -119,7 +119,16 @@ export function ExpenseHistoryScreen({
           <input
             type="date"
             value={expenseDate}
-            onChange={e => setExpenseDate(e.target.value)}
+            max={today}
+            onChange={e => {
+              const val = e.target.value
+              if (!val) return
+              if (val > today) {
+                setExpenseDate(today)
+              } else {
+                setExpenseDate(val)
+              }
+            }}
             className="bg-transparent text-sm font-bold text-gray-900 focus:outline-none cursor-pointer"
           />
           {expenseDate === today && (
@@ -130,8 +139,13 @@ export function ExpenseHistoryScreen({
         </div>
 
         <button
-          onClick={() => setExpenseDate(shiftDateStr(expenseDate, 1))}
-          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 text-gray-700"
+          onClick={() => {
+            if (expenseDate < today) {
+              setExpenseDate(shiftDateStr(expenseDate, 1))
+            }
+          }}
+          disabled={expenseDate >= today}
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 text-gray-700 disabled:opacity-40 disabled:pointer-events-none"
         >
           <IconChevronRight />
         </button>

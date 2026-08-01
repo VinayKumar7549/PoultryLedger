@@ -1,4 +1,5 @@
 import { dbInstance } from '../database'
+import { compareTimestampsDesc } from '../../utils/date'
 
 export interface PurchaseEntity {
   id: string
@@ -15,7 +16,8 @@ export interface PurchaseEntity {
 
 export class PurchaseRepository {
   async getAll(): Promise<PurchaseEntity[]> {
-    return await dbInstance.query<PurchaseEntity>('SELECT * FROM purchases ORDER BY date DESC, time DESC')
+    const list = await dbInstance.query<PurchaseEntity>('SELECT * FROM purchases ORDER BY date DESC, created_at DESC')
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async getById(id: string): Promise<PurchaseEntity | null> {
@@ -24,10 +26,11 @@ export class PurchaseRepository {
   }
 
   async getByDate(date: string): Promise<PurchaseEntity[]> {
-    return await dbInstance.query<PurchaseEntity>(
-      'SELECT * FROM purchases WHERE date = ? ORDER BY time DESC',
+    const list = await dbInstance.query<PurchaseEntity>(
+      'SELECT * FROM purchases WHERE date = ? ORDER BY created_at DESC',
       [date]
     )
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async create(p: Omit<PurchaseEntity, 'created_at' | 'updated_at'>): Promise<void> {

@@ -6,7 +6,6 @@ import { historyService, DailyTransactionItem } from '../services/historyService
 import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
-import { generateDailySummaryPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import { TransactionBadge, PaymentMethodBadge } from '../components/common/TransactionBadges'
@@ -89,6 +88,7 @@ export function HistoryScreen({
           reportData.totalEggsSold = Math.round(reportData.totalTraysSold * 30)
           reportData.customersServedCount = new Set(filteredItems.map(({ customer }) => customer.name)).size
         }
+        const { generateDailySummaryPdf } = await import('../services/pdfGenerator')
         const res = await generateDailySummaryPdf(reportData)
         if (res && res.success) {
           setExportSuccessDetails(res)

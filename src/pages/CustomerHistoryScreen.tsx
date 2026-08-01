@@ -4,7 +4,6 @@ import { RouteEntity } from '../database'
 import { fmtCurrency } from '../utils/format'
 import { fmtDate, today, parseOpeningBalanceTimestamp, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
 import { pdfReportDataService, DateRange, resolveDateRange, DateFilterOption } from '../services/pdfReportDataService'
-import { generateCustomerStatementPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import { TransactionBadge, PaymentMethodBadge, TransactionDot } from '../components/common/TransactionBadges'
@@ -118,6 +117,7 @@ export function CustomerHistoryScreen({
         creditKeptToday: Number(t.creditKeptToday) || 0,
         creditChange: Number(t.creditChange) || 0,
         notes: t.notes || '',
+        createdAt: t.createdAt,
       }
     })
 
@@ -140,11 +140,12 @@ export function CustomerHistoryScreen({
         creditKeptToday: 0,
         creditChange: customer.openingCredit,
         notes: 'Initial Opening Credit',
+        createdAt: timestamp,
       })
     }
 
     // Sort chronologically (oldest first)
-    rawItems.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time))
+    rawItems.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.createdAt, b.createdAt))
 
     // Compute running balances & metrics
     let running = 0
@@ -167,7 +168,7 @@ export function CustomerHistoryScreen({
     })
 
     // Newest transactions first for timeline
-    const reverseTimeline = [...processed].sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time))
+    const reverseTimeline = [...processed].sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.createdAt, b.createdAt))
 
     // Filter by type & date
     const filtered = reverseTimeline.filter(item => {
@@ -209,6 +210,7 @@ export function CustomerHistoryScreen({
         throw new Error('Could not load statement report data.')
       }
 
+      const { generateCustomerStatementPdf } = await import('../services/pdfGenerator')
       const result = await generateCustomerStatementPdf(statement)
 
       if (result && result.success) {

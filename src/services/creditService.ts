@@ -73,7 +73,7 @@ class CreditService {
       }
 
       // Sort newest transaction first (Date DESC, Time DESC)
-      transactions.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time))
+      transactions.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.createdAt, b.createdAt))
 
       let runningCredit = currentOutstanding
       const historyEntries: CreditTimelineEntry[] = []

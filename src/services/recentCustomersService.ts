@@ -4,12 +4,23 @@ const RECENT_KEY = 'recent_customers'
 export const RECENT_CUSTOMERS_LIMIT = 3
 
 class RecentCustomersService {
+  private cachedRecentIds: string[] | null = null
+
   async getRecentCustomerIds(): Promise<string[]> {
+    if (this.cachedRecentIds) {
+      return this.cachedRecentIds
+    }
     try {
       const val = await settingsRepository.get(RECENT_KEY)
-      if (!val) return []
-      return JSON.parse(val) as string[]
+      if (!val) {
+        this.cachedRecentIds = []
+        return []
+      }
+      const parsed = JSON.parse(val) as string[]
+      this.cachedRecentIds = parsed
+      return parsed
     } catch {
+      this.cachedRecentIds = []
       return []
     }
   }
@@ -20,6 +31,7 @@ class RecentCustomersService {
       const current = await this.getRecentCustomerIds()
       const filtered = current.filter(id => id !== customerId)
       const updated = [customerId, ...filtered].slice(0, RECENT_CUSTOMERS_LIMIT)
+      this.cachedRecentIds = updated
       await settingsRepository.set(RECENT_KEY, JSON.stringify(updated))
       return updated
     } catch {

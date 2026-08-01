@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite'
 import { Preferences } from '@capacitor/preferences'
 import { INITIAL_SCHEMA_SQL } from './migrations/schema'
+import { compareTimestampsDesc } from '../utils/date'
 
 export const DB_NAME = 'poultryledger.db'
 
@@ -99,6 +100,8 @@ class WebInMemoryDB {
         res = res.filter(t => String(t.customer_id) === String(values[0]))
       } else if (cleanSql.includes('where id = ?')) {
         res = res.filter(t => String(t.id) === String(values[0]))
+      } else if (cleanSql.includes('where date = ?')) {
+        res = res.filter(t => String(t.date) === String(values[0]))
       }
 
       if (cleanSql.includes('credit_change != 0') || cleanSql.includes('credit_kept_today != 0')) {
@@ -111,12 +114,8 @@ class WebInMemoryDB {
         })
       }
 
-      if (cleanSql.includes('order by date desc, time desc')) {
-        res.sort((a, b) => {
-          const keyA = `${a.date || ''} ${a.time || ''} ${a.created_at || ''}`
-          const keyB = `${b.date || ''} ${b.time || ''} ${b.created_at || ''}`
-          return keyB.localeCompare(keyA)
-        })
+      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
+        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
       }
       return res as unknown as T[]
     }
@@ -126,8 +125,8 @@ class WebInMemoryDB {
       if (cleanSql.includes('where id = ?')) {
         res = res.filter(p => String(p.id) === String(values[0]))
       }
-      if (cleanSql.includes('order by date desc, time desc')) {
-        res.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
+      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
+        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
       }
       return res as unknown as T[]
     }
@@ -137,8 +136,8 @@ class WebInMemoryDB {
       if (cleanSql.includes('where id = ?')) {
         res = res.filter(e => String(e.id) === String(values[0]))
       }
-      if (cleanSql.includes('order by date desc, time desc')) {
-        res.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
+      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
+        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
       }
       return res as unknown as T[]
     }
@@ -603,7 +602,9 @@ class Database {
   }
 
   async execute(statement: string, values: any[] = [], transaction?: boolean): Promise<any> {
-    await this.initDatabase()
+    if (!this.isInitialized) {
+      await this.initDatabase()
+    }
     if (Capacitor.isNativePlatform()) {
       if (!this.db) return null
       // When inside an active manual transaction block, pass transaction = false to db.run
@@ -615,7 +616,9 @@ class Database {
   }
 
   async query<T = any>(statement: string, values: any[] = []): Promise<T[]> {
-    await this.initDatabase()
+    if (!this.isInitialized) {
+      await this.initDatabase()
+    }
     if (Capacitor.isNativePlatform()) {
       if (!this.db) return []
       const res = await this.db.query(statement, values)

@@ -410,6 +410,7 @@ export default function App() {
             )}
             {screen === 'expenses' && (
               <AddExpenseScreen
+                selectedDate={expenseDate}
                 onBack={goBack}
                 onSaveExpense={handleSaveExpense}
               />

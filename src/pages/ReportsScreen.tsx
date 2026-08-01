@@ -15,15 +15,6 @@ import {
   DailySummaryReport,
   MonthlySummaryReport,
 } from '../services/pdfReportDataService'
-import {
-  generateCustomerStatementPdf,
-  generateCreditReportPdf,
-  generateExpenseReportPdf,
-  generateSalesReportPdf,
-  generateInventoryReportPdf,
-  generateDailySummaryPdf,
-  generateMonthlySummaryPdf,
-} from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import { TransactionBadge, PaymentMethodBadge } from '../components/common/TransactionBadges'
@@ -117,21 +108,22 @@ export function ReportsScreen({
   const handleExportPdf = async () => {
     try {
       setIsLoading(true)
+      const pdfGen = await import('../services/pdfGenerator')
       let res: FileActionResult | undefined
       if (activeReport === 'customer_statement' && statementData) {
-        res = await generateCustomerStatementPdf(statementData)
+        res = await pdfGen.generateCustomerStatementPdf(statementData)
       } else if (activeReport === 'credit' && creditData) {
-        res = await generateCreditReportPdf(creditData)
+        res = await pdfGen.generateCreditReportPdf(creditData)
       } else if (activeReport === 'expense' && expenseData) {
-        res = await generateExpenseReportPdf(expenseData)
+        res = await pdfGen.generateExpenseReportPdf(expenseData)
       } else if (activeReport === 'sales' && salesData) {
-        res = await generateSalesReportPdf(salesData)
+        res = await pdfGen.generateSalesReportPdf(salesData)
       } else if (activeReport === 'inventory' && inventoryData) {
-        res = await generateInventoryReportPdf(inventoryData)
+        res = await pdfGen.generateInventoryReportPdf(inventoryData)
       } else if (activeReport === 'daily' && dailyData) {
-        res = await generateDailySummaryPdf(dailyData)
+        res = await pdfGen.generateDailySummaryPdf(dailyData)
       } else if (activeReport === 'monthly' && monthlyData) {
-        res = await generateMonthlySummaryPdf(monthlyData)
+        res = await pdfGen.generateMonthlySummaryPdf(monthlyData)
       }
 
       if (res && res.success) {

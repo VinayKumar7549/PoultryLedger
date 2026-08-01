@@ -1,4 +1,5 @@
 import { dbInstance } from '../database'
+import { compareTimestampsDesc } from '../../utils/date'
 
 export interface TransactionEntity {
   id: string
@@ -19,7 +20,8 @@ export interface TransactionEntity {
 
 export class TransactionRepository {
   async getAll(): Promise<TransactionEntity[]> {
-    return await dbInstance.query<TransactionEntity>('SELECT * FROM transactions ORDER BY date DESC, time DESC')
+    const list = await dbInstance.query<TransactionEntity>('SELECT * FROM transactions ORDER BY date DESC, created_at DESC')
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async getById(id: string): Promise<TransactionEntity | null> {
@@ -28,24 +30,27 @@ export class TransactionRepository {
   }
 
   async getByCustomerId(customerId: string): Promise<TransactionEntity[]> {
-    return await dbInstance.query<TransactionEntity>(
-      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY date DESC, time DESC, created_at DESC',
+    const list = await dbInstance.query<TransactionEntity>(
+      'SELECT * FROM transactions WHERE customer_id = ? ORDER BY date DESC, created_at DESC',
       [customerId]
     )
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async getCreditTransactionsByCustomerId(customerId: string): Promise<TransactionEntity[]> {
-    return await dbInstance.query<TransactionEntity>(
-      'SELECT * FROM transactions WHERE customer_id = ? AND (credit_change != 0 OR credit_kept_today != 0 OR amount_to_be_paid != amount_paid) ORDER BY date DESC, time DESC, created_at DESC',
+    const list = await dbInstance.query<TransactionEntity>(
+      'SELECT * FROM transactions WHERE customer_id = ? AND (credit_change != 0 OR credit_kept_today != 0 OR amount_to_be_paid != amount_paid) ORDER BY date DESC, created_at DESC',
       [customerId]
     )
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async getByDate(date: string): Promise<TransactionEntity[]> {
-    return await dbInstance.query<TransactionEntity>(
-      'SELECT * FROM transactions WHERE date = ? ORDER BY time DESC',
+    const list = await dbInstance.query<TransactionEntity>(
+      'SELECT * FROM transactions WHERE date = ? ORDER BY created_at DESC',
       [date]
     )
+    return list.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
   }
 
   async create(tx: Omit<TransactionEntity, 'created_at' | 'updated_at'>): Promise<void> {

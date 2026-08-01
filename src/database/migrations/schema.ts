@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE INDEX IF NOT EXISTS idx_transactions_customer_id ON transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_cust_date ON transactions(customer_id, date DESC, time DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_date_type ON transactions(date, type);
 
 CREATE TABLE IF NOT EXISTS purchases (
   id TEXT PRIMARY KEY,

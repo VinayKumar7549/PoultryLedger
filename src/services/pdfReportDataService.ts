@@ -4,7 +4,7 @@ import { transactionRepository } from '../database/repositories/TransactionRepos
 import { expenseRepository } from '../database/repositories/ExpenseRepository'
 import { purchaseRepository } from '../database/repositories/PurchaseRepository'
 import { routeRepository } from '../database/repositories/RouteRepository'
-import { today, fmtDate, shiftDateStr, toIso } from '../utils/date'
+import { today, fmtDate, shiftDateStr, toIso, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
 
 export type DateFilterOption =
   | 'today'
@@ -338,11 +338,7 @@ class PdfReportDataService {
     const routeName = routeMap[customer.route_id] || 'General Route'
 
     const allTxs = await transactionRepository.getByCustomerId(customerId)
-    allTxs.sort((a, b) => {
-      const cmp = a.date.localeCompare(b.date)
-      if (cmp !== 0) return cmp
-      return (a.time || '').localeCompare(b.time || '')
-    })
+    allTxs.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     const openingCreditBase = Number(customer.opening_credit) || 0
     let runningBalance = openingCreditBase
@@ -442,11 +438,7 @@ class PdfReportDataService {
       if (filterRouteId && String(c.route_id) !== String(filterRouteId)) return
 
       const custTxs = txMap[c.id] || []
-      custTxs.sort((a, b) => {
-        const cmp = a.date.localeCompare(b.date)
-        if (cmp !== 0) return cmp
-        return (a.time || '').localeCompare(b.time || '')
-      })
+      custTxs.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
       const outstanding = Number(c.outstanding_credit) || 0
       if (outstanding <= 0) return
@@ -498,11 +490,7 @@ class PdfReportDataService {
       return d >= dateRange.startDate && d <= dateRange.endDate
     })
 
-    filtered.sort((a, b) => {
-      const cmp = a.date.localeCompare(b.date)
-      if (cmp !== 0) return cmp
-      return (a.time || '').localeCompare(b.time || '')
-    })
+    filtered.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     let totalExpenses = 0
     const catMap: Record<string, { count: number; amount: number }> = {}
@@ -571,13 +559,7 @@ class PdfReportDataService {
       return true
     })
 
-    filteredTxs.sort((a, b) => {
-      const d1 = (a.date || '').trim().split('T')[0]
-      const d2 = (b.date || '').trim().split('T')[0]
-      const cmp = d1.localeCompare(d2)
-      if (cmp !== 0) return cmp
-      return (a.time || '').localeCompare(b.time || '')
-    })
+    filteredTxs.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     let totalSales = 0
     let totalTraysSold = 0
@@ -670,7 +652,7 @@ class PdfReportDataService {
       const d = (p.date || '').trim().split('T')[0]
       return d >= dateRange.startDate && d <= dateRange.endDate
     })
-    filteredPurchases.sort((a, b) => a.date.localeCompare(b.date))
+    filteredPurchases.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     const filteredTxs = transactions.filter(t => {
       const d = (t.date || '').trim().split('T')[0]

@@ -32,44 +32,52 @@ export const getTime = (d: Date = new Date()): string =>
   d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
 
 export const timeTo24h = (timeStr?: string): string => {
-  if (!timeStr) return '00:00'
-  const trimmed = timeStr.trim().toUpperCase()
-  const match12 = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/)
+  if (!timeStr) return '00:00:00'
+  const normalized = timeStr.replace(/[\u202f\u00a0]+/g, ' ').replace(/\./g, '').trim().toUpperCase()
+  const match12 = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/)
   if (match12) {
     let hours = parseInt(match12[1], 10)
     const minutes = match12[2]
-    const period = match12[3]
+    const seconds = match12[3] || '00'
+    const period = match12[4]
     if (period === 'PM' && hours < 12) hours += 12
     if (period === 'AM' && hours === 12) hours = 0
-    return `${String(hours).padStart(2, '0')}:${minutes}`
+    return `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`
   }
-  const match24 = trimmed.match(/^(\d{1,2}):(\d{2})/)
+  const match24 = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/)
   if (match24) {
     const hours = String(parseInt(match24[1], 10)).padStart(2, '0')
     const minutes = match24[2]
-    return `${hours}:${minutes}`
+    const seconds = match24[3] || '00'
+    return `${hours}:${minutes}:${seconds}`
   }
-  return '00:00'
+  return '00:00:00'
 }
 
 export const compareTimestampsAsc = (
   dateA: string = '',
   timeA: string = '',
   dateB: string = '',
-  timeB: string = ''
+  timeB: string = '',
+  createdAtA: string = '',
+  createdAtB: string = ''
 ): number => {
   const cmpDate = (dateA || '').localeCompare(dateB || '')
   if (cmpDate !== 0) return cmpDate
-  return timeTo24h(timeA).localeCompare(timeTo24h(timeB))
+  const cmpTime = timeTo24h(timeA).localeCompare(timeTo24h(timeB))
+  if (cmpTime !== 0) return cmpTime
+  return (createdAtA || '').localeCompare(createdAtB || '')
 }
 
 export const compareTimestampsDesc = (
   dateA: string = '',
   timeA: string = '',
   dateB: string = '',
-  timeB: string = ''
+  timeB: string = '',
+  createdAtA: string = '',
+  createdAtB: string = ''
 ): number => {
-  return compareTimestampsAsc(dateB, timeB, dateA, timeA)
+  return compareTimestampsAsc(dateB, timeB, dateA, timeA, createdAtB, createdAtA)
 }
 
 export const parseOpeningBalanceTimestamp = (tsStr?: string): { date: string; time: string } => {

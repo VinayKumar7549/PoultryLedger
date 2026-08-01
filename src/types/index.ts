@@ -31,6 +31,7 @@ export interface Transaction {
   creditKeptToday: number
   creditChange: number
   notes?: string
+  createdAt?: string
 }
 
 export interface Customer {

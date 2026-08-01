@@ -6,13 +6,16 @@ import { businessProfileService } from '../services/businessProfileService'
 import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
 export function AddExpenseScreen({
+  selectedDate,
   onBack,
   onSaveExpense,
 }: {
+  selectedDate?: string
   onBack: () => void
   onSaveExpense: (expense: Expense) => void
 }) {
-  const [expenseDate, setExpenseDate] = useState(today)
+  const initialDate = selectedDate && selectedDate <= today ? selectedDate : today
+  const [expenseDate, setExpenseDate] = useState(initialDate)
   const [amountSpent, setAmountSpent] = useState('')
   const [purpose, setPurpose] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -26,11 +29,11 @@ export function AddExpenseScreen({
   const amountVal = parseFloat(amountSpent) || 0
 
   const handleSave = () => {
-    if (amountVal <= 0 || !purpose.trim()) return
+    if (amountVal <= 0 || !purpose.trim() || expenseDate > today) return
 
     const newExpense: Expense = {
       id: 'e' + uid(),
-      date: expenseDate || today,
+      date: expenseDate && expenseDate <= today ? expenseDate : today,
       time: getTime(),
       amount: amountVal,
       purpose: purpose.trim(),
@@ -76,7 +79,14 @@ export function AddExpenseScreen({
             <input
               type="date"
               value={expenseDate}
-              onChange={e => setExpenseDate(e.target.value)}
+              max={today}
+              onChange={e => {
+                const val = e.target.value
+                if (!val) return
+                if (val <= today) {
+                  setExpenseDate(val)
+                }
+              }}
               className="w-full rounded-xl px-3.5 py-3 text-sm font-700 border outline-none bg-white focus:border-emerald-500 transition-colors"
               style={{ borderColor: '#e5e7eb', color: '#111827', fontWeight: 700 }}
             />
@@ -155,10 +165,10 @@ export function AddExpenseScreen({
         {/* Save Expense Button */}
         <button
           onClick={handleSave}
-          disabled={amountVal <= 0 || !purpose.trim()}
-          className="w-full py-4 rounded-2xl text-base font-800 active:scale-98 transition-all shadow-lg mt-2"
+          disabled={amountVal <= 0 || !purpose.trim() || expenseDate > today}
+          className="w-full py-4 rounded-2xl text-base font-800 active:scale-98 transition-all shadow-lg mt-2 disabled:opacity-50"
           style={{
-            background: amountVal > 0 && purpose.trim() ? '#059669' : '#9ca3af',
+            background: amountVal > 0 && purpose.trim() && expenseDate <= today ? '#059669' : '#9ca3af',
             color: 'white',
             fontWeight: 800,
           }}

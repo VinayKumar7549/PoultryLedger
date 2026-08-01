@@ -6,7 +6,6 @@ import { creditService, CreditTimelineEntry } from '../services/creditService'
 import { SearchBar } from '../components/common/SearchBar'
 import { DateFilterPicker } from '../components/common/DateFilterPicker'
 import { pdfReportDataService, DateFilterOption, resolveDateRange } from '../services/pdfReportDataService'
-import { generateCustomerStatementPdf, generateCreditReportPdf } from '../services/pdfGenerator'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
 import { TransactionBadge, PaymentMethodBadge, TransactionDot } from '../components/common/TransactionBadges'
@@ -58,15 +57,16 @@ export function CreditRecordsScreen({
     try {
       const range = resolveDateRange(filter, customStart, customEnd)
       let res: FileActionResult | undefined
+      const pdfGen = await import('../services/pdfGenerator')
       if (pickerState.mode === 'customer' && selectedCustomer) {
         const data = await pdfReportDataService.getCustomerStatement(selectedCustomer.id, range)
         if (data) {
-          res = await generateCustomerStatementPdf(data)
+          res = await pdfGen.generateCustomerStatementPdf(data)
         }
       } else if (pickerState.mode === 'credit') {
         const data = await pdfReportDataService.getCreditReport(range)
         if (data) {
-          res = await generateCreditReportPdf(data)
+          res = await pdfGen.generateCreditReportPdf(data)
         }
       }
 

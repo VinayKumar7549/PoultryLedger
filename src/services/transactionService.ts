@@ -15,6 +15,7 @@ export const entityToTransaction = (entity: TransactionEntity): Transaction => (
   creditKeptToday: entity.credit_kept_today,
   creditChange: entity.credit_change,
   notes: entity.notes || '',
+  createdAt: entity.created_at,
 })
 
 class TransactionService {
