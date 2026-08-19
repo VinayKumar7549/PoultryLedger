@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Expense, PaymentMethod, BusinessProfile } from '../types'
-import { today, getTime, uid } from '../utils/date'
+import { useState } from 'react'
+import { Expense, PaymentMethod } from '../types'
+import { getTodayStr, getTime, uid } from '../utils/date'
 import { IconBack } from '../components/common/Icons'
-import { businessProfileService } from '../services/businessProfileService'
-import { PaymentQrCodeDisplay } from '../components/common/PaymentQrCodeDisplay'
 
 export function AddExpenseScreen({
   selectedDate,
@@ -14,26 +12,23 @@ export function AddExpenseScreen({
   onBack: () => void
   onSaveExpense: (expense: Expense) => void
 }) {
-  const initialDate = selectedDate && selectedDate <= today ? selectedDate : today
+  const curToday = getTodayStr()
+  const initialDate = selectedDate && selectedDate <= curToday ? selectedDate : curToday
   const [expenseDate, setExpenseDate] = useState(initialDate)
   const [amountSpent, setAmountSpent] = useState('')
   const [purpose, setPurpose] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [savedMsg, setSavedMsg] = useState('')
-  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)
-
-  useEffect(() => {
-    businessProfileService.getProfile().then(setBusinessProfile)
-  }, [])
 
   const amountVal = parseFloat(amountSpent) || 0
 
   const handleSave = () => {
-    if (amountVal <= 0 || !purpose.trim() || expenseDate > today) return
+    const liveToday = getTodayStr()
+    if (amountVal <= 0 || !purpose.trim() || expenseDate > liveToday) return
 
     const newExpense: Expense = {
       id: 'e' + uid(),
-      date: expenseDate && expenseDate <= today ? expenseDate : today,
+      date: expenseDate && expenseDate <= liveToday ? expenseDate : liveToday,
       time: getTime(),
       amount: amountVal,
       purpose: purpose.trim(),
@@ -79,11 +74,11 @@ export function AddExpenseScreen({
             <input
               type="date"
               value={expenseDate}
-              max={today}
+              max={getTodayStr()}
               onChange={e => {
                 const val = e.target.value
                 if (!val) return
-                if (val <= today) {
+                if (val <= getTodayStr()) {
                   setExpenseDate(val)
                 }
               }}
@@ -140,35 +135,25 @@ export function AddExpenseScreen({
                 onClick={() => setPaymentMethod('online')}
                 className="py-3 rounded-xl text-sm font-700 transition-all border"
                 style={{
-                  background: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : 'white',
-                  color: paymentMethod === 'online' || paymentMethod === 'gpay' ? 'white' : '#374151',
-                  borderColor: paymentMethod === 'online' || paymentMethod === 'gpay' ? '#059669' : '#e5e7eb',
+                  background: paymentMethod === 'online' ? '#059669' : 'white',
+                  color: paymentMethod === 'online' ? 'white' : '#374151',
+                  borderColor: paymentMethod === 'online' ? '#059669' : '#e5e7eb',
                   fontWeight: 700,
                 }}
               >
                 🌐 Online
               </button>
             </div>
-
-            {/* Instant QR Code Display when Online selected */}
-            {(paymentMethod === 'online' || paymentMethod === 'gpay') && (
-              <PaymentQrCodeDisplay
-                businessProfile={businessProfile}
-                onProfileUpdated={setBusinessProfile}
-                showTitle={false}
-                compact={true}
-              />
-            )}
           </div>
         </div>
 
         {/* Save Expense Button */}
         <button
           onClick={handleSave}
-          disabled={amountVal <= 0 || !purpose.trim() || expenseDate > today}
+          disabled={amountVal <= 0 || !purpose.trim() || expenseDate > getTodayStr()}
           className="w-full py-4 rounded-2xl text-base font-800 active:scale-98 transition-all shadow-lg mt-2 disabled:opacity-50"
           style={{
-            background: amountVal > 0 && purpose.trim() && expenseDate <= today ? '#059669' : '#9ca3af',
+            background: amountVal > 0 && purpose.trim() && expenseDate <= getTodayStr() ? '#059669' : '#9ca3af',
             color: 'white',
             fontWeight: 800,
           }}

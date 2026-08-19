@@ -4,7 +4,7 @@ import { transactionRepository } from '../database/repositories/TransactionRepos
 import { expenseRepository } from '../database/repositories/ExpenseRepository'
 import { purchaseRepository } from '../database/repositories/PurchaseRepository'
 import { routeRepository } from '../database/repositories/RouteRepository'
-import { today, fmtDate, shiftDateStr, toIso, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
+import { getTodayStr, fmtDate, shiftDateStr, toIso, compareTimestampsAsc } from '../utils/date'
 
 export type DateFilterOption =
   | 'today'
@@ -21,7 +21,7 @@ export interface DateRange {
   label: string
 }
 
-export function getLastMonthRange(refDateStr: string = today): { startDate: string; endDate: string } {
+export function getLastMonthRange(refDateStr: string = getTodayStr()): { startDate: string; endDate: string } {
   const [y, m] = refDateStr.split('-').map(Number)
   const firstOfCurrentMonth = new Date(y, m - 1, 1)
   const lastDayOfPrevMonth = new Date(firstOfCurrentMonth.getTime() - 86400000)
@@ -36,7 +36,7 @@ export function resolveDateRange(
   filter: DateFilterOption,
   customStart?: string,
   customEnd?: string,
-  refDateStr: string = today
+  refDateStr: string = getTodayStr()
 ): DateRange {
   const [yearStr, monthStr] = refDateStr.split('-')
 
@@ -447,7 +447,7 @@ class PdfReportDataService {
 
       let periodSales = 0
       let periodPaid = 0
-      let lastDate = c.created_at ? c.created_at.split('T')[0] : today
+      let lastDate = c.created_at ? c.created_at.split('T')[0] : getTodayStr()
 
       custTxs.forEach(t => {
         if (t.date >= dateRange.startDate && t.date <= dateRange.endDate) {

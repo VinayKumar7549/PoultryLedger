@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Customer, Transaction } from '../types'
-import { today, shiftDateStr, fmtDate } from '../utils/date'
+import { getTodayStr, shiftDateStr, fmtDate } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { historyService, DailyTransactionItem } from '../services/historyService'
 import { SearchBar } from '../components/common/SearchBar'
@@ -45,7 +45,8 @@ export function HistoryScreen({
   const [exportSuccessDetails, setExportSuccessDetails] = useState<FileActionResult | null>(null)
 
   useEffect(() => {
-    historyService.getDailyTransactions(historyDate).then(res => {
+    const activeDate = historyDate || getTodayStr()
+    historyService.getDailyTransactions(activeDate).then(res => {
       setDailyData(res)
     })
   }, [historyDate, customers])
@@ -54,10 +55,11 @@ export function HistoryScreen({
   const handleExportCurrent = async () => {
     try {
       setIsExporting(true)
+      const targetDate = historyDate || getTodayStr()
       const range = {
-        startDate: historyDate,
-        endDate: historyDate,
-        label: `Daily Transactions (${fmtDate(historyDate)})`,
+        startDate: targetDate,
+        endDate: targetDate,
+        label: `Daily Transactions (${fmtDate(targetDate)})`,
       }
       const reportData = await pdfReportDataService.getDailySummaryReport(range)
       if (reportData) {
@@ -108,9 +110,10 @@ export function HistoryScreen({
   const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
     try {
       setIsExporting(true)
-      const range = resolveDateRange(filter, customStart, customEnd, historyDate)
+      const range = resolveDateRange(filter, customStart, customEnd, historyDate || getTodayStr())
       const reportData = await pdfReportDataService.getDailySummaryReport(range)
       if (reportData) {
+        const { generateDailySummaryPdf } = await import('../services/pdfGenerator')
         const res = await generateDailySummaryPdf(reportData)
         if (res && res.success) {
           setExportSuccessDetails(res)
@@ -192,17 +195,17 @@ export function HistoryScreen({
             <IconCalendar />
           </div>
           <span className="text-sm font-bold text-gray-900">
-            {historyDate === today ? 'Today' : fmtDate(historyDate)}
+            {historyDate === getTodayStr() ? 'Today' : fmtDate(historyDate)}
           </span>
         </div>
 
         <button
           onClick={() => setHistoryDate(shiftDateStr(historyDate, 1))}
-          disabled={historyDate === today}
+          disabled={historyDate >= getTodayStr()}
           className="w-9 h-9 rounded-full flex items-center justify-center bg-white border active:scale-95 transition-transform hover:bg-gray-50 disabled:opacity-40"
           style={{
             borderColor: '#e5e7eb',
-            color: historyDate === today ? '#d1d5db' : '#374151',
+            color: historyDate >= getTodayStr() ? '#d1d5db' : '#374151',
           }}
         >
           <IconChevronRight />
@@ -215,7 +218,7 @@ export function HistoryScreen({
           <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
             <div>
               <p className="text-xs font-semibold" style={{ color: '#065f46' }}>
-                Daily Sales ({historyDate === today ? 'Today' : fmtDate(historyDate)})
+                Daily Sales ({historyDate === getTodayStr() ? 'Today' : fmtDate(historyDate)})
               </p>
               <p className="text-2xl font-extrabold mt-0.5" style={{ color: '#047857' }}>
                 {fmtCurrency(totalSalesDay)}

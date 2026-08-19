@@ -13,7 +13,7 @@ import { businessProfileService } from './businessProfileService'
 import { fileService } from './fileService'
 import { BusinessProfile } from '../types'
 import { fmtPdfCurrency } from '../utils/format'
-import { fmtDate } from '../utils/date'
+import { fmtDate, getTodayStr } from '../utils/date'
 import { formatPaymentMethodText } from '../components/common/TransactionBadges'
 
 /**
@@ -131,7 +131,7 @@ function attachFooter(doc: jsPDF) {
 export async function generateCustomerStatementPdf(report: CustomerStatementReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Customer Statement', genDateStr)
 
@@ -308,7 +308,7 @@ export async function generateCustomerStatementPdf(report: CustomerStatementRepo
 export async function generateCreditReportPdf(report: CreditReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Credit Report', genDateStr)
 
@@ -421,7 +421,7 @@ export async function generateCreditReportPdf(report: CreditReport) {
 export async function generateExpenseReportPdf(report: ExpenseReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Expense Report', genDateStr)
 
@@ -553,7 +553,7 @@ export async function generateExpenseReportPdf(report: ExpenseReport) {
 export async function generateInventoryReportPdf(report: InventoryReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Inventory Report', genDateStr)
 
@@ -647,7 +647,7 @@ export async function generateInventoryReportPdf(report: InventoryReport) {
 export async function generateSalesReportPdf(report: SalesReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Sales Report', genDateStr)
 
@@ -765,7 +765,7 @@ export async function generateSalesReportPdf(report: SalesReport) {
 export async function generateDailySummaryPdf(report: DailySummaryReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Daily Summary Report', genDateStr)
 
@@ -873,7 +873,7 @@ export async function generateDailySummaryPdf(report: DailySummaryReport) {
 export async function generateMonthlySummaryPdf(report: MonthlySummaryReport) {
   const doc = createBasePdf()
   const profile = await businessProfileService.getProfile()
-  const genDateStr = fmtDate(new Date().toISOString().split('T')[0])
+  const genDateStr = fmtDate(getTodayStr())
 
   const startY = drawHeader(doc, profile, 'Monthly Summary Report', genDateStr)
 

@@ -1,4 +1,3 @@
-import React from 'react'
 
 export type TransactionCategory =
   | 'normal_sale'       // 🟢 Green: Normal Sale (paid exact bill amount)

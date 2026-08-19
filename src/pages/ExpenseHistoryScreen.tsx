@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Expense, PaymentMethod } from '../types'
-import { today, shiftDateStr, fmtDate } from '../utils/date'
+import { getTodayStr, shiftDateStr, fmtDate } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { historyService } from '../services/historyService'
 import { SearchBar } from '../components/common/SearchBar'
@@ -51,14 +51,15 @@ export function ExpenseHistoryScreen({
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null)
 
   useEffect(() => {
-    historyService.getDailyExpenses(expenseDate).then(res => {
+    const activeDate = expenseDate || getTodayStr()
+    historyService.getDailyExpenses(activeDate).then(res => {
       setDailyData(res)
     })
   }, [expenseDate, expenses])
 
   const handleConfirmDateFilter = async (filter: DateFilterOption, customStart?: string, customEnd?: string) => {
     try {
-      const range = resolveDateRange(filter, customStart, customEnd)
+      const range = resolveDateRange(filter, customStart, customEnd, expenseDate || getTodayStr())
       const reportData = await pdfReportDataService.getExpenseReport(range)
       if (reportData) {
         const { generateExpenseReportPdf } = await import('../services/pdfGenerator')
@@ -119,19 +120,19 @@ export function ExpenseHistoryScreen({
           <input
             type="date"
             value={expenseDate}
-            max={today}
+            max={getTodayStr()}
             onChange={e => {
               const val = e.target.value
               if (!val) return
-              if (val > today) {
-                setExpenseDate(today)
+              if (val > getTodayStr()) {
+                setExpenseDate(getTodayStr())
               } else {
                 setExpenseDate(val)
               }
             }}
             className="bg-transparent text-sm font-bold text-gray-900 focus:outline-none cursor-pointer"
           />
-          {expenseDate === today && (
+          {expenseDate === getTodayStr() && (
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
               Today
             </span>
@@ -140,11 +141,11 @@ export function ExpenseHistoryScreen({
 
         <button
           onClick={() => {
-            if (expenseDate < today) {
+            if (expenseDate < getTodayStr()) {
               setExpenseDate(shiftDateStr(expenseDate, 1))
             }
           }}
-          disabled={expenseDate >= today}
+          disabled={expenseDate >= getTodayStr()}
           className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200 active:bg-gray-300 text-gray-700 disabled:opacity-40 disabled:pointer-events-none"
         >
           <IconChevronRight />
@@ -273,9 +274,8 @@ export function ExpenseHistoryScreen({
                   onChange={e => setEditMethod(e.target.value as PaymentMethod)}
                   className="px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-amber-500"
                 >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI / GPay / PhonePe</option>
-                  <option value="bank">Bank Transfer</option>
+                  <option value="cash">💵 Cash</option>
+                  <option value="online">🌐 Online</option>
                 </select>
               </div>
             </div>

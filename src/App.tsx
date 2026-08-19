@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { App as CapacitorApp } from '@capacitor/app'
 import { Screen, Customer, Expense, EggPurchase, Transaction, BusinessProfile } from './types'
-import { today } from './utils/date'
+import { getTodayStr } from './utils/date'
 import { dbInstance } from './database/database'
 import { customerService } from './services/customerService'
 import { routeService } from './services/routeService'
@@ -48,8 +48,8 @@ export default function App() {
   const [recentCustomerIds, setRecentCustomerIds] = useState<string[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [purchases, setPurchases] = useState<EggPurchase[]>([])
-  const [historyDate, setHistoryDate] = useState<string>(today)
-  const [expenseDate, setExpenseDate] = useState<string>(today)
+  const [historyDate, setHistoryDate] = useState<string>(() => getTodayStr())
+  const [expenseDate, setExpenseDate] = useState<string>(() => getTodayStr())
   const [showMenu, setShowMenu] = useState<boolean>(false)
   const [showSetupModal, setShowSetupModal] = useState<boolean>(false)
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null)

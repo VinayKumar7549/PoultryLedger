@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Customer, Expense, EggPurchase } from '../types'
-import { today, fmtDate } from '../utils/date'
+import { getTodayStr, fmtDate } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { IconMenu } from '../components/common/Icons'
 import {
@@ -17,7 +17,7 @@ import {
 } from '../services/pdfReportDataService'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
-import { TransactionBadge, PaymentMethodBadge } from '../components/common/TransactionBadges'
+import { TransactionBadge } from '../components/common/TransactionBadges'
 
 export type ReportType =
   | 'customer_statement'
@@ -45,8 +45,8 @@ export function ReportsScreen({
   const [activeReport, setActiveReport] = useState<ReportType>('customer_statement')
   const [dateFilter, setDateFilter] = useState<DateFilterOption>('this_month')
 
-  const [customStartDate, setCustomStartDate] = useState<string>(today)
-  const [customEndDate, setCustomEndDate] = useState<string>(today)
+  const [customStartDate, setCustomStartDate] = useState<string>(() => getTodayStr())
+  const [customEndDate, setCustomEndDate] = useState<string>(() => getTodayStr())
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
     customerList.length > 0 ? customerList[0].id : ''
   )
@@ -67,7 +67,7 @@ export function ReportsScreen({
   useEffect(() => {
     const loadReportData = async () => {
       setIsLoading(true)
-      const range = resolveDateRange(dateFilter, customStartDate, customEndDate)
+      const range = resolveDateRange(dateFilter, customStartDate, customEndDate, getTodayStr())
 
       try {
         if (activeReport === 'customer_statement') {

@@ -213,7 +213,7 @@ class FileService {
   async savePdf(
     pdfDoc: jsPDF,
     filename: string,
-    title: string = 'PoultryLedger Report',
+    _title: string = 'PoultryLedger Report',
     category: ReportCategory = 'Daily Sales'
   ): Promise<FileActionResult> {
     try {

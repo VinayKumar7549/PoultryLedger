@@ -16,7 +16,7 @@ import {
 export function RouteScreen({
   routeId,
   customers,
-  routeCustomers,
+  routeCustomers: _routeCustomers,
   routes,
   routeNames,
   navigate,
@@ -25,7 +25,7 @@ export function RouteScreen({
   onDeleteCustomer,
   onCreateCustomer,
   onUpdateCustomer,
-  onCreateRoute,
+  onCreateRoute: _onCreateRoute,
   onRenameRoute,
   onDeleteRoute,
 }: {

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Customer, Screen, Transaction } from '../types'
 import { RouteEntity } from '../database'
 import { fmtCurrency } from '../utils/format'
-import { fmtDate, today, parseOpeningBalanceTimestamp, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
+import { fmtDate, getTodayStr, parseOpeningBalanceTimestamp, compareTimestampsAsc, compareTimestampsDesc } from '../utils/date'
 import { pdfReportDataService, DateRange, resolveDateRange, DateFilterOption } from '../services/pdfReportDataService'
 import { FileActionResult } from '../services/fileService'
 import { ExportSuccessModal } from '../components/common/ExportSuccessModal'
@@ -43,8 +43,8 @@ export function CustomerHistoryScreen({
   // Filter States
   const [filterType, setFilterType] = useState<'all' | 'sales' | 'payments' | 'adjustments'>('all')
   const [dateFilter, setDateFilter] = useState<DateFilterOption>('this_month')
-  const [customStart, setCustomStart] = useState<string>(today)
-  const [customEnd, setCustomEnd] = useState<string>(today)
+  const [customStart, setCustomStart] = useState<string>(() => getTodayStr())
+  const [customEnd, setCustomEnd] = useState<string>(() => getTodayStr())
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false)
 
   // Overflow Menu & Edit Modal States
@@ -74,7 +74,7 @@ export function CustomerHistoryScreen({
 
   // Resolve current date range
   const dateRange: DateRange = useMemo(() => {
-    return resolveDateRange(dateFilter, customStart, customEnd, today)
+    return resolveDateRange(dateFilter, customStart, customEnd, getTodayStr())
   }, [dateFilter, customStart, customEnd])
 
   // Calculate timeline & metrics

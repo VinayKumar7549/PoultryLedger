@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Customer, PaymentMethod, Transaction, TransactionType, BusinessProfile } from '../types'
-import { today, getTime, uid } from '../utils/date'
+import { getTodayStr, getTime, uid } from '../utils/date'
 import { fmtCurrency } from '../utils/format'
 import { IconBack, IconHistory } from '../components/common/Icons'
 import { businessProfileService } from '../services/businessProfileService'
@@ -162,7 +162,7 @@ export function TransactionScreen({
 
     let tx: Transaction
     const txId = editingTx?.id || 't' + uid()
-    const txDate = editingTx?.date || today
+    const txDate = editingTx?.date || getTodayStr()
     const txTime = editingTx?.time || getTime()
 
     if (txType === 'sale') {

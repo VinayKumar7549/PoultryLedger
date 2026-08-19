@@ -19,6 +19,10 @@ export const getPrevMonthStr = (monthIsoStr: string): string => {
   return `${prevY}-${prevM}`
 }
 
+export const getTodayStr = (d: Date = new Date()): string => toIso(d)
+export const getYesterdayStr = (d: Date = new Date()): string => shiftDateStr(getTodayStr(d), -1)
+export const getTwoDaysAgoStr = (d: Date = new Date()): string => shiftDateStr(getTodayStr(d), -2)
+
 export const today = toIso(new Date())
 export const yesterday = shiftDateStr(today, -1)
 export const twoDaysAgo = shiftDateStr(today, -2)
@@ -82,7 +86,7 @@ export const compareTimestampsDesc = (
 
 export const parseOpeningBalanceTimestamp = (tsStr?: string): { date: string; time: string } => {
   if (!tsStr) {
-    return { date: today, time: getTime() }
+    return { date: getTodayStr(), time: getTime() }
   }
 
   const d = new Date(tsStr)
@@ -95,7 +99,7 @@ export const parseOpeningBalanceTimestamp = (tsStr?: string): { date: string; ti
 
   if (tsStr.includes('T') || tsStr.includes(' ')) {
     const parts = tsStr.split(/[T ]/)
-    const date = parts[0] || today
+    const date = parts[0] || getTodayStr()
     let rawTime = '00:00'
     if (parts[1]) {
       const cleanTime = parts[1].substring(0, 5)
@@ -113,7 +117,7 @@ export const parseOpeningBalanceTimestamp = (tsStr?: string): { date: string; ti
     return { date: tsStr.substring(0, 10), time: getTime() }
   }
 
-  return { date: today, time: getTime() }
+  return { date: getTodayStr(), time: getTime() }
 }
 
 export const uid = (): string => Math.random().toString(36).slice(2, 9)

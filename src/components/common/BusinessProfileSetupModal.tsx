@@ -16,7 +16,7 @@ export function BusinessProfileSetupModal({
   const [ownerName, setOwnerName] = useState<string>('')
   const [phoneNumber, setPhoneNumber] = useState<string>('')
   const [address, setAddress] = useState<string>('')
-  const [businessLogo, setBusinessLogo] = useState<string>('')
+  const [businessLogo] = useState<string>('')
   const [error, setError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)

@@ -7,7 +7,6 @@ import { dashboardService, DashboardMetrics } from '../services/dashboardService
 import { RECENT_CUSTOMERS_LIMIT } from '../services/recentCustomersService'
 import { SearchBar } from '../components/common/SearchBar'
 import {
-  IconEgg,
   IconRoute,
   IconWallet,
   IconHistory,

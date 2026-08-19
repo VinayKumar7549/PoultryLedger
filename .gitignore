@@ -65,3 +65,7 @@ AGENTS.md
 # ================================
 *.tmp
 *.temp
+
+
+.artifacts/
+.figma/
