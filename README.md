@@ -72,10 +72,10 @@ The official production APK is published and available on **GitHub Releases**:
 
 ```mermaid
 flowchart LR
-    A[1. Download PoultryLedger.apk] --> B[2. Enable 'Install Unknown Apps']
-    B --> C[3. Tap Install & Launch]
-    C --> D[Setup Business Profile]
-    D --> E[Start Route Billing! 🚀]
+    A["1. Download PoultryLedger.apk"] --> B["2. Enable 'Install Unknown Apps'"]
+    B --> C["3. Tap Install & Launch"]
+    C --> D["Setup Business Profile"]
+    D --> E["Start Route Billing! 🚀"]
 ```
 
 1. **Download:** Tap the download link above directly on your Android phone.
@@ -164,33 +164,33 @@ PoultryLedger is engineered with a modular, offline-first layered architecture e
 
 ```mermaid
 graph TD
-    subgraph UI_Layer [Presentation Layer (React 19 + Tailwind v4)]
-        A1[HomeScreen]
-        A2[RouteScreen & POS]
-        A3[CustomerHistory & Credit]
-        A4[ReportsScreen & PDF Preview]
-        A5[Inventory & Expense Screens]
-        A6[BackupRestore & Profile]
+    subgraph UI_Layer ["Presentation Layer (React 19 & Tailwind v4)"]
+        A1["HomeScreen"]
+        A2["RouteScreen & POS"]
+        A3["CustomerHistory & Credit"]
+        A4["ReportsScreen & PDF Preview"]
+        A5["Inventory & Expense Screens"]
+        A6["BackupRestore & Profile"]
     end
 
-    subgraph Service_Layer [Business Logic & Service Layer]
-        B1[transactionService]
-        B2[customerService & routeService]
-        B3[dashboardService & inventoryService]
-        B4[pdfReportDataService & pdfGenerator]
-        B5[backupService & fileService]
+    subgraph Service_Layer ["Business Logic & Service Layer"]
+        B1["transactionService"]
+        B2["customerService & routeService"]
+        B3["dashboardService & inventoryService"]
+        B4["pdfReportDataService & pdfGenerator"]
+        B5["backupService & fileService"]
     end
 
-    subgraph Storage_Layer [Storage & Native Bridge]
-        C1[Capacitor Native SQLite Plugin]
-        C2[Native Filesystem & Share Bridge]
-        C3[Web In-Memory / LocalStorage Fallback]
+    subgraph Storage_Layer ["Storage & Native Bridge"]
+        C1["Capacitor Native SQLite Plugin"]
+        C2["Native Filesystem & Share Bridge"]
+        C3["Web In-Memory / LocalStorage Fallback"]
     end
 
-    subgraph Hardware [Device Hardware & OS]
-        D1[(Local SQLite Database: poultryledger.db)]
-        D2[Device Storage / Documents Folder]
-        D3[Android OS Native Share Sheet]
+    subgraph Hardware ["Device Hardware & OS"]
+        D1[("Local SQLite Database: poultryledger.db")]
+        D2["Device Storage / Documents Folder"]
+        D3["Android OS Native Share Sheet"]
     end
 
     UI_Layer --> Service_Layer
@@ -231,13 +231,13 @@ erDiagram
     TRANSACTIONS {
         text id PK
         text customer_id FK
-        text type "sale | payment"
+        text type
         text date
         text time
         real trays
         real amount_to_be_paid
         real amount_paid
-        text payment_method "cash | online | gpay"
+        text payment_method
         real credit_kept_today
         real credit_change
         text notes
@@ -251,7 +251,7 @@ erDiagram
         text time
         real trays
         int total_eggs
-        text egg_type "normal | damaged"
+        text egg_type
         real rate_per_100
         real total_amount
         text created_at
