@@ -587,7 +587,7 @@ class PdfReportDataService {
       totalTraysSold += trays
       totalPaid += paid
       if (method === 'cash') cashReceived += paid
-      else if (method === 'gpay') gpayReceived += paid
+      else if (method === 'gpay' || method === 'online') gpayReceived += paid
       creditAdded += credit
 
       // Aggregate by customer
@@ -655,6 +655,7 @@ class PdfReportDataService {
     filteredPurchases.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     const filteredTxs = transactions.filter(t => {
+      if (t.type === 'payment') return false
       const d = (t.date || '').trim().split('T')[0]
       return d >= dateRange.startDate && d <= dateRange.endDate
     })
@@ -746,11 +747,11 @@ class PdfReportDataService {
       0
     )
     const allSoldEggs = allTxs.reduce(
-      (sum, t) => sum + Math.round((Number(t.trays) || 0) * 30),
+      (sum, t) => sum + (t.type === 'payment' ? 0 : Math.round((Number(t.trays) || 0) * 30)),
       0
     )
-    const remainingInventoryEggs = Math.max(0, allPurchasedEggs - allSoldEggs)
-    const remainingInventoryTrays = Math.floor(remainingInventoryEggs / 30)
+    const remainingInventoryEggs = allPurchasedEggs - allSoldEggs
+    const remainingInventoryTrays = Number((remainingInventoryEggs / 30).toFixed(2))
 
     const customersServedCount = new Set(salesReport.transactions.map(t => t.customerName)).size
     const totalPayments = salesReport.cashReceived + salesReport.gpayReceived

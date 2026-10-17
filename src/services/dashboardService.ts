@@ -1,7 +1,7 @@
-import { dbInstance } from '../database/database'
-import { toIso, getPrevMonthStr } from '../utils/date'
-import { getSQLiteInventoryMetrics, InventoryMetrics } from './inventoryService'
-import { Capacitor } from '@capacitor/core'
+import { dbInstance } from "../database/database"
+import { toIso, getPrevMonthStr } from "../utils/date"
+import { getSQLiteInventoryMetrics, InventoryMetrics } from "./inventoryService"
+import { Capacitor } from "@capacitor/core"
 
 export interface DashboardMetrics {
   // Sales Summary
@@ -45,10 +45,10 @@ class DashboardService {
 
       if (!Capacitor.isNativePlatform()) {
         // Javascript calculation fallback for web development (npm run dev)
-        const txs = await dbInstance.query('SELECT * FROM transactions')
-        const purchases = await dbInstance.query('SELECT * FROM purchases')
-        const expenses = await dbInstance.query('SELECT * FROM expenses')
-        const customers = await dbInstance.query('SELECT * FROM customers')
+        const txs = await dbInstance.query("SELECT * FROM transactions")
+        const purchases = await dbInstance.query("SELECT * FROM purchases")
+        const expenses = await dbInstance.query("SELECT * FROM expenses")
+        const customers = await dbInstance.query("SELECT * FROM customers")
 
         let totalSalesAmount = 0
         let todaySales = 0
@@ -56,15 +56,17 @@ class DashboardService {
         let lastMonthSales = 0
         let lastMonthOutstandingCredit = 0
         let totalEggsSold = 0
-        let totalTransactions = txs.length
+        let totalTransactions = 0
 
         for (const t of txs) {
+          if (t.type === "payment") continue
+          totalTransactions++
           const amt = Number(t.amount_to_be_paid) || 0
           const cred = Number(t.credit_kept_today) || 0
           totalSalesAmount += amt
           totalEggsSold += Math.round((Number(t.trays) || 0) * 30)
 
-          const tDate = (t.date || '').trim().split('T')[0]
+          const tDate = (t.date || "").trim().split("T")[0]
           if (tDate === todayStr) {
             todaySales += amt
             todayCreditGiven += cred
@@ -87,7 +89,7 @@ class DashboardService {
           totalTraysPurchased += trays
           totalEggsPurchased += trays * 30
 
-          const pDate = (p.date || '').trim().split('T')[0]
+          const pDate = (p.date || "").trim().split("T")[0]
           if (pDate === todayStr) {
             todayPurchaseCost += cost
           } else if (pDate.startsWith(lastMonthStr)) {
@@ -103,7 +105,7 @@ class DashboardService {
           const amt = Number(e.amount) || 0
           totalExpenses += amt
 
-          const eDate = (e.date || '').trim().split('T')[0]
+          const eDate = (e.date || "").trim().split("T")[0]
           if (eDate === todayStr) {
             todayExpenses += amt
           } else if (eDate.startsWith(lastMonthStr)) {
@@ -125,7 +127,8 @@ class DashboardService {
         const inventory = await getSQLiteInventoryMetrics()
 
         const todayGrossProfit = todaySales - todayExpenses - todayPurchaseCost
-        const lastMonthGrossProfit = lastMonthSales - lastMonthExpenses - lastMonthPurchases
+        const lastMonthGrossProfit =
+          lastMonthSales - lastMonthExpenses - lastMonthPurchases
 
         return {
           totalSalesAmount,
@@ -161,15 +164,24 @@ class DashboardService {
           COALESCE(SUM(CASE WHEN date LIKE ? THEN credit_kept_today ELSE 0 END), 0) AS last_month_credit_given,
           COALESCE(SUM(ROUND(trays * 30)), 0) AS total_eggs_sold,
           COUNT(*) AS total_transactions
-         FROM transactions`,
-        [todayStr, todayLike, todayStr, todayLike, lastMonthLike, lastMonthLike]
+         FROM transactions
+         WHERE type != 'payment'`,
+        [
+          todayStr,
+          todayLike,
+          todayStr,
+          todayLike,
+          lastMonthLike,
+          lastMonthLike,
+        ],
       )
 
       const totalSalesAmount = Number(txRes[0]?.total_sales) || 0
       const todaySales = Number(txRes[0]?.today_sales) || 0
       const todayCreditGiven = Number(txRes[0]?.today_credit_given) || 0
       const lastMonthSales = Number(txRes[0]?.last_month_sales) || 0
-      const lastMonthOutstandingCredit = Number(txRes[0]?.last_month_credit_given) || 0
+      const lastMonthOutstandingCredit =
+        Number(txRes[0]?.last_month_credit_given) || 0
       const totalEggsSold = Number(txRes[0]?.total_eggs_sold) || 0
       const totalTransactions = Number(txRes[0]?.total_transactions) || 0
 
@@ -180,16 +192,19 @@ class DashboardService {
           COALESCE(SUM(CASE WHEN date = ? OR date LIKE ? THEN total_amount ELSE 0 END), 0) AS today_purchase_cost,
           COALESCE(SUM(CASE WHEN date LIKE ? THEN total_amount ELSE 0 END), 0) AS last_month_purchases,
           COALESCE(SUM(trays), 0) AS total_trays_purchased,
-          COALESCE(SUM(trays * 30), 0) AS total_eggs_purchased
+          COALESCE(SUM(CASE WHEN total_eggs > 0 THEN total_eggs ELSE ROUND(trays * 30) END), 0) AS total_eggs_purchased
          FROM purchases`,
-        [todayStr, todayLike, lastMonthLike]
+        [todayStr, todayLike, lastMonthLike],
       )
 
       const totalPurchaseCost = Number(purchaseRes[0]?.total_purchase_cost) || 0
       const todayPurchaseCost = Number(purchaseRes[0]?.today_purchase_cost) || 0
-      const lastMonthPurchases = Number(purchaseRes[0]?.last_month_purchases) || 0
-      const totalTraysPurchased = Number(purchaseRes[0]?.total_trays_purchased) || 0
-      const totalEggsPurchased = Number(purchaseRes[0]?.total_eggs_purchased) || 0
+      const lastMonthPurchases =
+        Number(purchaseRes[0]?.last_month_purchases) || 0
+      const totalTraysPurchased =
+        Number(purchaseRes[0]?.total_trays_purchased) || 0
+      const totalEggsPurchased =
+        Number(purchaseRes[0]?.total_eggs_purchased) || 0
 
       // 3. Expenses
       const expenseRes = await dbInstance.query(
@@ -198,7 +213,7 @@ class DashboardService {
           COALESCE(SUM(CASE WHEN date = ? OR date LIKE ? THEN amount ELSE 0 END), 0) AS today_expenses,
           COALESCE(SUM(CASE WHEN date LIKE ? THEN amount ELSE 0 END), 0) AS last_month_expenses
          FROM expenses`,
-        [todayStr, todayLike, lastMonthLike]
+        [todayStr, todayLike, lastMonthLike],
       )
 
       const totalExpenses = Number(expenseRes[0]?.total_expenses) || 0
@@ -210,18 +225,20 @@ class DashboardService {
         `SELECT 
           COALESCE(SUM(outstanding_credit), 0) AS total_outstanding,
           COUNT(CASE WHEN outstanding_credit > 0 THEN 1 END) AS pending_credit_customers_count
-         FROM customers`
+         FROM customers`,
       )
 
       const totalOutstandingCredit = Number(custRes[0]?.total_outstanding) || 0
-      const pendingCreditCustomersCount = Number(custRes[0]?.pending_credit_customers_count) || 0
+      const pendingCreditCustomersCount =
+        Number(custRes[0]?.pending_credit_customers_count) || 0
 
       // 5. Inventory Metrics
       const inventory = await getSQLiteInventoryMetrics()
 
       // 6. Gross Profit Calculations
       const todayGrossProfit = todaySales - todayExpenses - todayPurchaseCost
-      const lastMonthGrossProfit = lastMonthSales - lastMonthExpenses - lastMonthPurchases
+      const lastMonthGrossProfit =
+        lastMonthSales - lastMonthExpenses - lastMonthPurchases
 
       return {
         totalSalesAmount,
@@ -243,7 +260,7 @@ class DashboardService {
         inventory,
       }
     } catch (err) {
-      console.error('Error calculating dashboard metrics from SQLite:', err)
+      console.error("Error calculating dashboard metrics from SQLite:", err)
       return {
         totalSalesAmount: 0,
         todaySales: 0,
