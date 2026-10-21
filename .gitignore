@@ -69,3 +69,6 @@ AGENTS.md
 
 .artifacts/
 .figma/
+
+# Tests
+tests/

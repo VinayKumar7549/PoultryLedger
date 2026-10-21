@@ -37,12 +37,12 @@ export function RouteScreen({
   navigate: (s: Screen, r?: string, c?: string) => void
   onBack: () => void
   onSaveRouteCustomers: (routeId: string, ids: string[]) => void
-  onDeleteCustomer?: (id: string) => void
+  onDeleteCustomer?: (id: string) => Promise<{ success: boolean; error?: string } | void> | void
   onCreateCustomer?: (name: string, subtitle: string, routeId: string, openingCredit?: number) => void
   onUpdateCustomer?: (id: string, name: string, subtitle: string, routeId: string, openingCredit?: number) => void
   onCreateRoute?: (name: string) => void
   onRenameRoute?: (id: string, newName: string) => void
-  onDeleteRoute?: (id: string) => void
+  onDeleteRoute?: (id: string) => Promise<{ success: boolean; error?: string } | void> | void
 }) {
   const routeTitle = (routeNames && routeNames[routeId]) || 'Route'
 
@@ -67,6 +67,7 @@ export function RouteScreen({
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [renameText, setRenameText] = useState('')
   const [deleteWarning, setDeleteWarning] = useState<string | null>(null)
+  const [deleteWarningTitle, setDeleteWarningTitle] = useState<string>('Cannot Delete Route')
   const [showConfirmDeleteRoute, setShowConfirmDeleteRoute] = useState(false)
 
   // Customer form inputs (Add / Edit)
@@ -141,6 +142,7 @@ export function RouteScreen({
 
   const handleAttemptDeleteRoute = () => {
     if (currentList.length > 0) {
+      setDeleteWarningTitle('Cannot Delete Route')
       setDeleteWarning(
         `Cannot delete "${routeTitle}". This route still has ${currentList.length} customer(s). Please move or reassign customers to another route first.`
       )
@@ -149,21 +151,53 @@ export function RouteScreen({
     }
   }
 
-  const handleConfirmDeleteRoute = () => {
-    if (onDeleteRoute) {
-      onDeleteRoute(routeId)
-    }
+  const handleConfirmDeleteRoute = async () => {
     setShowConfirmDeleteRoute(false)
+    if (onDeleteRoute) {
+      const result = await onDeleteRoute(routeId)
+      if (result && !result.success) {
+        setDeleteWarningTitle('Cannot Delete Route')
+        setDeleteWarning(result.error || `Cannot delete "${routeTitle}".`)
+      }
+    }
   }
 
-  const confirmDeleteCustomer = () => {
+  const handleAttemptDeleteCustomer = (customer: Customer) => {
+    const txCount = customer.transactions?.length || 0
+    const hasBalance = Number(customer.openingCredit) > 0 || Number(customer.outstandingCredit) !== 0
+
+    if (txCount > 0) {
+      setDeleteWarningTitle('Cannot Delete Customer')
+      setDeleteWarning(
+        `Cannot delete "${customer.name}". This customer has ${txCount} historical transaction(s). Historical business records must be preserved for accounting and inventory integrity.`
+      )
+      return
+    }
+
+    if (hasBalance) {
+      setDeleteWarningTitle('Cannot Delete Customer')
+      setDeleteWarning(
+        `Cannot delete "${customer.name}". This customer has an active balance (Opening: ${fmtCurrency(customer.openingCredit)}, Outstanding: ${fmtCurrency(customer.outstandingCredit)}). Please clear or settle the balance first.`
+      )
+      return
+    }
+
+    setCustomerToDelete(customer)
+  }
+
+  const confirmDeleteCustomer = async () => {
     if (customerToDelete) {
-      if (onDeleteCustomer) {
-        onDeleteCustomer(customerToDelete.id)
-      } else {
-        handleRemoveCustomer(customerToDelete.id)
-      }
+      const targetCustomer = customerToDelete
       setCustomerToDelete(null)
+      if (onDeleteCustomer) {
+        const result = await onDeleteCustomer(targetCustomer.id)
+        if (result && !result.success) {
+          setDeleteWarningTitle('Cannot Delete Customer')
+          setDeleteWarning(result.error || `Cannot delete "${targetCustomer.name}".`)
+        }
+      } else {
+        handleRemoveCustomer(targetCustomer.id)
+      }
     }
   }
 
@@ -260,14 +294,14 @@ export function RouteScreen({
               <div className="w-10 h-10 rounded-full flex items-center justify-center bg-amber-50 text-amber-600 flex-shrink-0">
                 <IconTrash />
               </div>
-              <h3 className="text-lg font-800" style={{ fontWeight: 800, color: '#111827' }}>Cannot Delete Route</h3>
+              <h3 className="text-lg font-800" style={{ fontWeight: 800, color: '#111827' }}>{deleteWarningTitle}</h3>
             </div>
             <p className="text-xs text-gray-600 font-500 leading-relaxed">{deleteWarning}</p>
             <button
               onClick={() => setDeleteWarning(null)}
               className="w-full py-3 rounded-xl font-700 text-xs text-white bg-emerald-600 active:scale-95 transition-transform mt-2"
             >
-              Understand & Move Customers First
+              OK, Got It
             </button>
           </div>
         </div>
@@ -330,7 +364,7 @@ export function RouteScreen({
               Are you sure you want to delete <span className="font-800 text-gray-900">"{customerToDelete.name}"</span>?
             </p>
             <p className="text-xs" style={{ color: '#6b7280' }}>
-              This action cannot be undone. All transaction history and credit records for this customer will also be removed.
+              Only customers with no transaction history or outstanding balance can be deleted. Historical accounting records cannot be removed.
             </p>
 
             <div className="flex gap-3 mt-3">
@@ -425,7 +459,7 @@ export function RouteScreen({
                       <IconEdit />
                     </button>
                     <button
-                      onClick={() => setCustomerToDelete(customer)}
+                      onClick={() => handleAttemptDeleteCustomer(customer)}
                       title="Delete Customer"
                       className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform"
                       style={{ background: '#fee2e2', color: '#dc2626' }}

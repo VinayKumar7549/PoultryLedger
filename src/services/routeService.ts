@@ -1,5 +1,12 @@
-import { routeRepository, RouteEntity } from '../database'
+import { routeRepository, RouteEntity, customerRepository } from '../database'
 import { uid } from '../utils/date'
+
+export interface DeleteRouteResult {
+  success: boolean
+  error?: string
+  routes: RouteEntity[]
+  routeNames: Record<string, string>
+}
 
 class RouteService {
   async loadRoutes(): Promise<{
@@ -46,12 +53,43 @@ class RouteService {
     return await this.loadRoutes()
   }
 
-  async deleteRoute(id: string): Promise<{
-    routes: RouteEntity[]
-    routeNames: Record<string, string>
-  }> {
-    await routeRepository.delete(id)
-    return await this.loadRoutes()
+  async deleteRoute(id: string): Promise<DeleteRouteResult> {
+    try {
+      const route = await routeRepository.getById(id)
+      if (!route) {
+        const state = await this.loadRoutes()
+        return {
+          success: false,
+          error: 'Route not found.',
+          ...state,
+        }
+      }
+
+      const customersOnRoute = await customerRepository.getByRouteId(id)
+      if (customersOnRoute.length > 0) {
+        const state = await this.loadRoutes()
+        return {
+          success: false,
+          error: `Cannot delete route "${route.name}". This route has ${customersOnRoute.length} customer(s) assigned to it. Move or reassign all customers before deleting this route.`,
+          ...state,
+        }
+      }
+
+      await routeRepository.delete(id)
+      const state = await this.loadRoutes()
+      return {
+        success: true,
+        ...state,
+      }
+    } catch (err: any) {
+      console.error('Error deleting route:', err)
+      const state = await this.loadRoutes()
+      return {
+        success: false,
+        error: err?.message || 'Failed to delete route due to a database error.',
+        ...state,
+      }
+    }
   }
 
   async getRouteNames(): Promise<Record<string, string>> {

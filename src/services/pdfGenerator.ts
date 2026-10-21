@@ -12,15 +12,15 @@ import {
 import { businessProfileService } from './businessProfileService'
 import { fileService } from './fileService'
 import { BusinessProfile } from '../types'
-import { fmtPdfCurrency } from '../utils/format'
+import { fmtPdfCurrency, formatPaymentMethodText } from '../utils/format'
 import { fmtDate, getTodayStr } from '../utils/date'
-import { formatPaymentMethodText } from '../components/common/TransactionBadges'
 
 /**
  * Creates base jsPDF instance configured for A4 Portrait with 15mm margins
  */
 function createBasePdf(): jsPDF {
-  return new jsPDF({
+  const PDFClass: any = typeof jsPDF === 'function' ? jsPDF : (jsPDF as any).jsPDF || (jsPDF as any).default
+  return new PDFClass({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',

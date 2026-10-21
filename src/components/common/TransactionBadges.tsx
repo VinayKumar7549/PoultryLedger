@@ -53,20 +53,7 @@ export function formatPaymentMethod(method?: string): string {
   return '🌐 Online'
 }
 
-/**
- * Formats payment method for plain text contexts (e.g. PDF reports)
- */
-export function formatPaymentMethodText(method?: string, amountPaid?: number): string {
-  if (amountPaid !== undefined && amountPaid <= 0) {
-    return '-'
-  }
-  if (!method) return 'Cash'
-  const m = method.toLowerCase().trim()
-  if (m === 'cash') {
-    return 'Cash'
-  }
-  return 'Online'
-}
+export { formatPaymentMethodText } from '../../utils/format'
 
 export interface CategoryStyle {
   label: string

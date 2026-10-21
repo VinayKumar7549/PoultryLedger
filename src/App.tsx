@@ -226,14 +226,18 @@ export default function App() {
     setRouteNames(res.routeNames)
   }
 
-  const handleDeleteRoute = async (id: string) => {
+  const handleDeleteRoute = async (id: string): Promise<{ success: boolean; error?: string }> => {
     const res = await routeService.deleteRoute(id)
+    if (!res.success) {
+      return { success: false, error: res.error }
+    }
     setRoutes(res.routes)
     setRouteNames(res.routeNames)
     const custRes = await customerService.fetchCustomersAndRoutes()
     setCustomers(custRes.customers)
     setRouteCustomerMap(custRes.routeCustomerMap)
     pushNavigate('home')
+    return { success: true }
   }
 
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined)
@@ -269,10 +273,14 @@ export default function App() {
     setRouteCustomerMap(res.routeCustomerMap)
   }
 
-  const handleDeleteCustomer = async (id: string) => {
+  const handleDeleteCustomer = async (id: string): Promise<{ success: boolean; error?: string }> => {
     const res = await customerService.deleteCustomer(id)
+    if (!res.success) {
+      return { success: false, error: res.error }
+    }
     setCustomers(res.customers)
     setRouteCustomerMap(res.routeCustomerMap)
+    return { success: true }
   }
 
   const handleCreateCustomer = async (name: string, subtitle: string, routeId: string, openingCredit?: number) => {

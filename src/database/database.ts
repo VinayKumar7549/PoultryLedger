@@ -1,11 +1,14 @@
-import { Capacitor } from '@capacitor/core'
-import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite'
-import { Preferences } from '@capacitor/preferences'
-import { INITIAL_SCHEMA_SQL } from './migrations/schema'
-import { compareTimestampsDesc } from '../utils/date'
+import { Capacitor } from "@capacitor/core"
+import {
+  CapacitorSQLite,
+  SQLiteConnection,
+  SQLiteDBConnection,
+} from "@capacitor-community/sqlite"
+import { Preferences } from "@capacitor/preferences"
+import { INITIAL_SCHEMA_SQL } from "./migrations/schema"
+import { compareTimestampsDesc } from "../utils/date"
 
-export const DB_NAME = 'poultryledger.db'
-
+export const DB_NAME = "poultryledger.db"
 
 class WebInMemoryDB {
   private tables: Record<string, any[]> = {
@@ -22,19 +25,26 @@ class WebInMemoryDB {
 
   init() {
     if (this.initialized) return
-    const saved = localStorage.getItem('poultryledger_web_db')
+    const saved = localStorage.getItem("poultryledger_web_db")
     if (saved) {
       try {
         this.tables = JSON.parse(saved)
       } catch {
-        this.tables = { routes: [], customers: [], transactions: [], purchases: [], expenses: [], settings: [] }
+        this.tables = {
+          routes: [],
+          customers: [],
+          transactions: [],
+          purchases: [],
+          expenses: [],
+          settings: [],
+        }
       }
     }
     this.initialized = true
   }
 
   save() {
-    localStorage.setItem('poultryledger_web_db', JSON.stringify(this.tables))
+    localStorage.setItem("poultryledger_web_db", JSON.stringify(this.tables))
   }
 
   beginTransaction() {
@@ -66,46 +76,49 @@ class WebInMemoryDB {
     this.save()
   }
 
-  query<T = any>(sql: string, values: any[] = []): T[] {
+  query<T = any,>(sql: string, values: any[] = []): T[] {
     this.init()
     const cleanSql = sql.trim().toLowerCase()
 
-    if (cleanSql.includes('from customers')) {
+    if (cleanSql.includes("from customers")) {
       let res = [...this.tables.customers]
-      if (cleanSql.includes('where id = ?')) {
-        res = res.filter(c => String(c.id) === String(values[0]))
-      } else if (cleanSql.includes('where route_id = ?')) {
-        res = res.filter(c => String(c.route_id) === String(values[0]))
+      if (cleanSql.includes("where id = ?")) {
+        res = res.filter((c) => String(c.id) === String(values[0]))
+      } else if (cleanSql.includes("where route_id = ?")) {
+        res = res.filter((c) => String(c.route_id) === String(values[0]))
       }
-      if (cleanSql.includes('order by name asc')) {
-        res.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      if (cleanSql.includes("order by name asc")) {
+        res.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
       }
       return res as unknown as T[]
     }
 
-    if (cleanSql.includes('from routes')) {
+    if (cleanSql.includes("from routes")) {
       let res = [...this.tables.routes]
-      if (cleanSql.includes('where id = ?')) {
-        res = res.filter(r => String(r.id) === String(values[0]))
+      if (cleanSql.includes("where id = ?")) {
+        res = res.filter((r) => String(r.id) === String(values[0]))
       }
-      if (cleanSql.includes('order by name asc')) {
-        res.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      if (cleanSql.includes("order by name asc")) {
+        res.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
       }
       return res as unknown as T[]
     }
 
-    if (cleanSql.includes('from transactions')) {
+    if (cleanSql.includes("from transactions")) {
       let res = [...this.tables.transactions]
-      if (cleanSql.includes('where customer_id = ?')) {
-        res = res.filter(t => String(t.customer_id) === String(values[0]))
-      } else if (cleanSql.includes('where id = ?')) {
-        res = res.filter(t => String(t.id) === String(values[0]))
-      } else if (cleanSql.includes('where date = ?')) {
-        res = res.filter(t => String(t.date) === String(values[0]))
+      if (cleanSql.includes("where customer_id = ?")) {
+        res = res.filter((t) => String(t.customer_id) === String(values[0]))
+      } else if (cleanSql.includes("where id = ?")) {
+        res = res.filter((t) => String(t.id) === String(values[0]))
+      } else if (cleanSql.includes("where date = ?")) {
+        res = res.filter((t) => String(t.date) === String(values[0]))
       }
 
-      if (cleanSql.includes('credit_change != 0') || cleanSql.includes('credit_kept_today != 0')) {
-        res = res.filter(t => {
+      if (
+        cleanSql.includes("credit_change != 0") ||
+        cleanSql.includes("credit_kept_today != 0")
+      ) {
+        res = res.filter((t) => {
           const change = Number(t.credit_change) || 0
           const kept = Number(t.credit_kept_today) || 0
           const billed = Number(t.amount_to_be_paid) || 0
@@ -114,38 +127,77 @@ class WebInMemoryDB {
         })
       }
 
-      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
-        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
+      if (
+        cleanSql.includes("order by") ||
+        cleanSql.includes("time desc") ||
+        cleanSql.includes("date desc")
+      ) {
+        res.sort((a, b) =>
+          compareTimestampsDesc(
+            a.date,
+            a.time,
+            b.date,
+            b.time,
+            a.created_at,
+            b.created_at,
+          ),
+        )
       }
       return res as unknown as T[]
     }
 
-    if (cleanSql.includes('from purchases')) {
+    if (cleanSql.includes("from purchases")) {
       let res = [...this.tables.purchases]
-      if (cleanSql.includes('where id = ?')) {
-        res = res.filter(p => String(p.id) === String(values[0]))
+      if (cleanSql.includes("where id = ?")) {
+        res = res.filter((p) => String(p.id) === String(values[0]))
       }
-      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
-        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
+      if (
+        cleanSql.includes("order by") ||
+        cleanSql.includes("time desc") ||
+        cleanSql.includes("date desc")
+      ) {
+        res.sort((a, b) =>
+          compareTimestampsDesc(
+            a.date,
+            a.time,
+            b.date,
+            b.time,
+            a.created_at,
+            b.created_at,
+          ),
+        )
       }
       return res as unknown as T[]
     }
 
-    if (cleanSql.includes('from expenses')) {
+    if (cleanSql.includes("from expenses")) {
       let res = [...this.tables.expenses]
-      if (cleanSql.includes('where id = ?')) {
-        res = res.filter(e => String(e.id) === String(values[0]))
+      if (cleanSql.includes("where id = ?")) {
+        res = res.filter((e) => String(e.id) === String(values[0]))
       }
-      if (cleanSql.includes('order by') || cleanSql.includes('time desc') || cleanSql.includes('date desc')) {
-        res.sort((a, b) => compareTimestampsDesc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
+      if (
+        cleanSql.includes("order by") ||
+        cleanSql.includes("time desc") ||
+        cleanSql.includes("date desc")
+      ) {
+        res.sort((a, b) =>
+          compareTimestampsDesc(
+            a.date,
+            a.time,
+            b.date,
+            b.time,
+            a.created_at,
+            b.created_at,
+          ),
+        )
       }
       return res as unknown as T[]
     }
 
-    if (cleanSql.includes('from settings')) {
+    if (cleanSql.includes("from settings")) {
       let res = [...this.tables.settings]
-      if (cleanSql.includes('where key = ?')) {
-        res = res.filter(s => s.key === values[0])
+      if (cleanSql.includes("where key = ?")) {
+        res = res.filter((s) => s.key === values[0])
       }
       return res as unknown as T[]
     }
@@ -157,11 +209,15 @@ class WebInMemoryDB {
     this.init()
     const cleanSql = sql.trim().toLowerCase()
 
-    if (cleanSql.startsWith('begin') || cleanSql.startsWith('commit') || cleanSql.startsWith('rollback')) {
+    if (
+      cleanSql.startsWith("begin") ||
+      cleanSql.startsWith("commit") ||
+      cleanSql.startsWith("rollback")
+    ) {
       return { changes: { changes: 0 } }
     }
 
-    if (cleanSql.startsWith('insert into customers')) {
+    if (cleanSql.startsWith("insert into customers")) {
       const item = {
         id: values[0],
         name: values[1],
@@ -173,15 +229,19 @@ class WebInMemoryDB {
         created_at: values[7],
         updated_at: values[8],
       }
-      this.tables.customers = this.tables.customers.filter(c => String(c.id) !== String(item.id))
+      this.tables.customers = this.tables.customers.filter(
+        (c) => String(c.id) !== String(item.id),
+      )
       this.tables.customers.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('update customers set')) {
+    if (cleanSql.startsWith("update customers set")) {
       const id = values[values.length - 1]
-      const idx = this.tables.customers.findIndex(c => String(c.id) === String(id))
+      const idx = this.tables.customers.findIndex(
+        (c) => String(c.id) === String(id),
+      )
       if (idx !== -1) {
         this.tables.customers[idx] = {
           ...this.tables.customers[idx],
@@ -198,51 +258,68 @@ class WebInMemoryDB {
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from customers')) {
+    if (cleanSql.startsWith("delete from customers")) {
       if (values.length === 0 || !values[0]) {
         this.tables.customers = []
       } else {
         const id = values[0]
-        this.tables.customers = this.tables.customers.filter(c => String(c.id) !== String(id))
+        this.tables.customers = this.tables.customers.filter(
+          (c) => String(c.id) !== String(id),
+        )
       }
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('insert into routes')) {
-      const item = { id: values[0], name: values[1], created_at: values[2], updated_at: values[3] }
-      this.tables.routes = this.tables.routes.filter(r => String(r.id) !== String(item.id))
+    if (cleanSql.startsWith("insert into routes")) {
+      const item = {
+        id: values[0],
+        name: values[1],
+        created_at: values[2],
+        updated_at: values[3],
+      }
+      this.tables.routes = this.tables.routes.filter(
+        (r) => String(r.id) !== String(item.id),
+      )
       this.tables.routes.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('update routes set')) {
+    if (cleanSql.startsWith("update routes set")) {
       const id = values[2]
-      const idx = this.tables.routes.findIndex(r => String(r.id) === String(id))
+      const idx = this.tables.routes.findIndex(
+        (r) => String(r.id) === String(id),
+      )
       if (idx !== -1) {
-        this.tables.routes[idx] = { ...this.tables.routes[idx], name: values[0], updated_at: values[1] }
+        this.tables.routes[idx] = {
+          ...this.tables.routes[idx],
+          name: values[0],
+          updated_at: values[1],
+        }
         this.save()
       }
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from routes')) {
+    if (cleanSql.startsWith("delete from routes")) {
       if (values.length === 0 || !values[0]) {
         this.tables.routes = []
       } else {
         const id = values[0]
-        this.tables.routes = this.tables.routes.filter(r => String(r.id) !== String(id))
+        this.tables.routes = this.tables.routes.filter(
+          (r) => String(r.id) !== String(id),
+        )
       }
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('insert into transactions')) {
+    if (cleanSql.startsWith("insert into transactions")) {
       const item = {
         id: values[0],
         customer_id: values[1],
-        type: values[2] || 'sale',
+        type: values[2] || "sale",
         date: values[3],
         time: values[4],
         trays: values[5],
@@ -251,19 +328,23 @@ class WebInMemoryDB {
         payment_method: values[8],
         credit_kept_today: values[9],
         credit_change: values[10],
-        notes: values[11] || '',
+        notes: values[11] || "",
         created_at: values[12],
         updated_at: values[13],
       }
-      this.tables.transactions = this.tables.transactions.filter(t => String(t.id) !== String(item.id))
+      this.tables.transactions = this.tables.transactions.filter(
+        (t) => String(t.id) !== String(item.id),
+      )
       this.tables.transactions.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('update transactions set')) {
+    if (cleanSql.startsWith("update transactions set")) {
       const id = values[values.length - 1]
-      const idx = this.tables.transactions.findIndex(t => String(t.id) === String(id))
+      const idx = this.tables.transactions.findIndex(
+        (t) => String(t.id) === String(id),
+      )
       if (idx !== -1) {
         this.tables.transactions[idx] = {
           ...this.tables.transactions[idx],
@@ -284,18 +365,20 @@ class WebInMemoryDB {
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from transactions')) {
+    if (cleanSql.startsWith("delete from transactions")) {
       if (values.length === 0 || !values[0]) {
         this.tables.transactions = []
       } else {
         const id = values[0]
-        this.tables.transactions = this.tables.transactions.filter(t => String(t.id) !== String(id))
+        this.tables.transactions = this.tables.transactions.filter(
+          (t) => String(t.id) !== String(id),
+        )
       }
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('insert into purchases')) {
+    if (cleanSql.startsWith("insert into purchases")) {
       const item = {
         id: values[0],
         date: values[1],
@@ -308,15 +391,19 @@ class WebInMemoryDB {
         created_at: values[8],
         updated_at: values[9],
       }
-      this.tables.purchases = this.tables.purchases.filter(p => String(p.id) !== String(item.id))
+      this.tables.purchases = this.tables.purchases.filter(
+        (p) => String(p.id) !== String(item.id),
+      )
       this.tables.purchases.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('update purchases set')) {
+    if (cleanSql.startsWith("update purchases set")) {
       const id = values[values.length - 1]
-      const idx = this.tables.purchases.findIndex(p => String(p.id) === String(id))
+      const idx = this.tables.purchases.findIndex(
+        (p) => String(p.id) === String(id),
+      )
       if (idx !== -1) {
         this.tables.purchases[idx] = {
           ...this.tables.purchases[idx],
@@ -334,18 +421,20 @@ class WebInMemoryDB {
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from purchases')) {
+    if (cleanSql.startsWith("delete from purchases")) {
       if (values.length === 0 || !values[0]) {
         this.tables.purchases = []
       } else {
         const id = values[0]
-        this.tables.purchases = this.tables.purchases.filter(p => String(p.id) !== String(id))
+        this.tables.purchases = this.tables.purchases.filter(
+          (p) => String(p.id) !== String(id),
+        )
       }
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('insert into expenses')) {
+    if (cleanSql.startsWith("insert into expenses")) {
       const item = {
         id: values[0],
         date: values[1],
@@ -356,15 +445,19 @@ class WebInMemoryDB {
         created_at: values[6],
         updated_at: values[7],
       }
-      this.tables.expenses = this.tables.expenses.filter(e => String(e.id) !== String(item.id))
+      this.tables.expenses = this.tables.expenses.filter(
+        (e) => String(e.id) !== String(item.id),
+      )
       this.tables.expenses.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('update expenses set')) {
+    if (cleanSql.startsWith("update expenses set")) {
       const id = values[values.length - 1]
-      const idx = this.tables.expenses.findIndex(e => String(e.id) === String(id))
+      const idx = this.tables.expenses.findIndex(
+        (e) => String(e.id) === String(id),
+      )
       if (idx !== -1) {
         this.tables.expenses[idx] = {
           ...this.tables.expenses[idx],
@@ -380,31 +473,40 @@ class WebInMemoryDB {
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from expenses')) {
+    if (cleanSql.startsWith("delete from expenses")) {
       if (values.length === 0 || !values[0]) {
         this.tables.expenses = []
       } else {
         const id = values[0]
-        this.tables.expenses = this.tables.expenses.filter(e => String(e.id) !== String(id))
+        this.tables.expenses = this.tables.expenses.filter(
+          (e) => String(e.id) !== String(id),
+        )
       }
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('insert into settings')) {
-      const item = { key: values[0], value: String(values[1] ?? ''), created_at: values[2], updated_at: values[3] }
-      this.tables.settings = this.tables.settings.filter(s => s.key !== item.key)
+    if (cleanSql.startsWith("insert into settings")) {
+      const item = {
+        key: values[0],
+        value: String(values[1] ?? ""),
+        created_at: values[2],
+        updated_at: values[3],
+      }
+      this.tables.settings = this.tables.settings.filter(
+        (s) => s.key !== item.key,
+      )
       this.tables.settings.push(item)
       this.save()
       return { changes: { changes: 1 } }
     }
 
-    if (cleanSql.startsWith('delete from settings')) {
+    if (cleanSql.startsWith("delete from settings")) {
       if (values.length === 0 || !values[0]) {
         this.tables.settings = []
       } else {
         const key = values[0]
-        this.tables.settings = this.tables.settings.filter(s => s.key !== key)
+        this.tables.settings = this.tables.settings.filter((s) => s.key !== key)
       }
       this.save()
       return { changes: { changes: 1 } }
@@ -416,12 +518,37 @@ class WebInMemoryDB {
 
 export const webDbInstance = new WebInMemoryDB()
 
+export interface IDatabaseAdapter {
+  query<T = any>(statement: string, values?: any[]): Promise<T[]>
+  execute(
+    statement: string,
+    values?: any[],
+    transaction?: boolean,
+  ): Promise<any>
+  beginTransaction(): Promise<void>
+  commitTransaction(): Promise<void>
+  rollbackTransaction(): Promise<void>
+  isTransactionActive(): Promise<boolean>
+}
+
 class Database {
   private sqliteConnection: SQLiteConnection | null = null
   private db: SQLiteDBConnection | null = null
   private isInitialized = false
   private initPromise: Promise<boolean> | null = null
   private inTransaction = false
+  private customAdapter: IDatabaseAdapter | null = null
+
+  setCustomAdapter(adapter: IDatabaseAdapter | null): void {
+    this.customAdapter = adapter
+    if (adapter) {
+      this.isInitialized = true
+    }
+  }
+
+  getCustomAdapter(): IDatabaseAdapter | null {
+    return this.customAdapter
+  }
 
   async initDatabase(): Promise<boolean> {
     if (this.isInitialized) return true
@@ -440,17 +567,33 @@ class Database {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        console.log('[DB] Native platform detected. Initializing SQLite & Preferences...')
+        console.log(
+          "[DB] Native platform detected. Initializing SQLite & Preferences...",
+        )
 
         // Verify Preferences plugin initialization and log saved values
         try {
-          const prevLaunch = await Preferences.get({ key: 'last_app_launch' })
-          console.log('[PREFERENCES] Previously saved launch timestamp:', prevLaunch.value || '(None - First Run)')
-          await Preferences.set({ key: 'last_app_launch', value: new Date().toISOString() })
-          const currentLaunch = await Preferences.get({ key: 'last_app_launch' })
-          console.log('[PREFERENCES] Preferences plugin active. Updated launch timestamp:', currentLaunch.value)
+          const prevLaunch = await Preferences.get({ key: "last_app_launch" })
+          console.log(
+            "[PREFERENCES] Previously saved launch timestamp:",
+            prevLaunch.value || "(None - First Run)",
+          )
+          await Preferences.set({
+            key: "last_app_launch",
+            value: new Date().toISOString(),
+          })
+          const currentLaunch = await Preferences.get({
+            key: "last_app_launch",
+          })
+          console.log(
+            "[PREFERENCES] Preferences plugin active. Updated launch timestamp:",
+            currentLaunch.value,
+          )
         } catch (prefErr) {
-          console.error('[PREFERENCES] Error initializing Preferences plugin:', prefErr)
+          console.error(
+            "[PREFERENCES] Error initializing Preferences plugin:",
+            prefErr,
+          )
         }
 
         this.sqliteConnection = new SQLiteConnection(CapacitorSQLite)
@@ -459,19 +602,22 @@ class Database {
         try {
           await this.sqliteConnection.checkConnectionsConsistency()
         } catch (consErr) {
-          console.warn('[DB] checkConnectionsConsistency warning:', consErr)
+          console.warn("[DB] checkConnectionsConsistency warning:", consErr)
         }
 
         const isConn = await this.sqliteConnection.isConnection(DB_NAME, false)
         if (isConn.result) {
-          this.db = await this.sqliteConnection.retrieveConnection(DB_NAME, false)
+          this.db = await this.sqliteConnection.retrieveConnection(
+            DB_NAME,
+            false,
+          )
         } else {
           this.db = await this.sqliteConnection.createConnection(
             DB_NAME,
             false,
-            'no-encryption',
+            "no-encryption",
             1,
-            false
+            false,
           )
         }
 
@@ -484,29 +630,39 @@ class Database {
         // Log database initialization status
         try {
           const dbVerRes = await this.db.getVersion()
-          console.log(`[DB] SQLite opened successfully! Database Version: ${dbVerRes.version}`)
+          console.log(
+            `[DB] SQLite opened successfully! Database Version: ${dbVerRes.version}`,
+          )
         } catch (logErr) {
-          console.log('[DB] SQLite opened successfully!')
+          console.log("[DB] SQLite opened successfully!")
         }
 
         await this.db.execute(INITIAL_SCHEMA_SQL)
         try {
-          await this.db.execute('ALTER TABLE customers ADD COLUMN opening_credit REAL NOT NULL DEFAULT 0;')
+          await this.db.execute(
+            "ALTER TABLE customers ADD COLUMN opening_credit REAL NOT NULL DEFAULT 0;",
+          )
         } catch {
           // Column already exists
         }
         try {
-          await this.db.execute('ALTER TABLE customers ADD COLUMN opening_credit_created_at TEXT;')
+          await this.db.execute(
+            "ALTER TABLE customers ADD COLUMN opening_credit_created_at TEXT;",
+          )
         } catch {
           // Column already exists
         }
         try {
-          await this.db.execute("ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'sale';")
+          await this.db.execute(
+            "ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'sale';",
+          )
         } catch {
           // Column already exists
         }
         try {
-          await this.db.execute('ALTER TABLE transactions ADD COLUMN notes TEXT;')
+          await this.db.execute(
+            "ALTER TABLE transactions ADD COLUMN notes TEXT;",
+          )
         } catch {
           // Column already exists
         }
@@ -518,17 +674,21 @@ class Database {
         return true
       }
     } catch (err) {
-      console.error('[DB] Error initializing database:', err)
+      console.error("[DB] Error initializing database:", err)
       this.isInitialized = false
       return false
     }
   }
 
-
   async beginTransaction(): Promise<void> {
+    if (this.customAdapter) {
+      return await this.customAdapter.beginTransaction()
+    }
     await this.initDatabase()
     if (this.inTransaction) {
-      console.warn('[DB] Transaction already in progress. Skipping nested transaction.')
+      console.warn(
+        "[DB] Transaction already in progress. Skipping nested transaction.",
+      )
       return
     }
 
@@ -546,9 +706,12 @@ class Database {
   }
 
   async commitTransaction(): Promise<void> {
+    if (this.customAdapter) {
+      return await this.customAdapter.commitTransaction()
+    }
     await this.initDatabase()
     if (!this.inTransaction) {
-      console.warn('[DB] No active transaction to commit.')
+      console.warn("[DB] No active transaction to commit.")
       return
     }
 
@@ -569,9 +732,12 @@ class Database {
   }
 
   async rollbackTransaction(): Promise<void> {
+    if (this.customAdapter) {
+      return await this.customAdapter.rollbackTransaction()
+    }
     await this.initDatabase()
     if (!this.inTransaction) {
-      console.warn('[DB] No active transaction to rollback.')
+      console.warn("[DB] No active transaction to rollback.")
       return
     }
 
@@ -592,6 +758,9 @@ class Database {
   }
 
   async isTransactionActive(): Promise<boolean> {
+    if (this.customAdapter) {
+      return await this.customAdapter.isTransactionActive()
+    }
     if (!this.inTransaction) return false
     if (Capacitor.isNativePlatform()) {
       if (!this.db) return false
@@ -601,7 +770,14 @@ class Database {
     return this.inTransaction
   }
 
-  async execute(statement: string, values: any[] = [], transaction?: boolean): Promise<any> {
+  async execute(
+    statement: string,
+    values: any[] = [],
+    transaction?: boolean,
+  ): Promise<any> {
+    if (this.customAdapter) {
+      return await this.customAdapter.execute(statement, values, transaction)
+    }
     if (!this.isInitialized) {
       await this.initDatabase()
     }
@@ -609,13 +785,17 @@ class Database {
       if (!this.db) return null
       // When inside an active manual transaction block, pass transaction = false to db.run
       // so @capacitor-community/sqlite does not attempt to create nested transactions.
-      const usePluginTx = transaction !== undefined ? transaction : !this.inTransaction
+      const usePluginTx =
+        transaction !== undefined ? transaction : !this.inTransaction
       return await this.db.run(statement, values, usePluginTx)
     }
     return webDbInstance.execute(statement, values)
   }
 
-  async query<T = any>(statement: string, values: any[] = []): Promise<T[]> {
+  async query<T = any,>(statement: string, values: any[] = []): Promise<T[]> {
+    if (this.customAdapter) {
+      return await this.customAdapter.query<T>(statement, values)
+    }
     if (!this.isInitialized) {
       await this.initDatabase()
     }

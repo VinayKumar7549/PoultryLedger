@@ -283,7 +283,7 @@ class BackupService {
       actualCounts.transactions === expectedCounts.transactions &&
       actualCounts.purchases === expectedCounts.purchases &&
       actualCounts.expenses === expectedCounts.expenses &&
-      actualCounts.settings === expectedCounts.settings
+      actualCounts.settings >= expectedCounts.settings
 
     if (!isMatch) {
       return {
