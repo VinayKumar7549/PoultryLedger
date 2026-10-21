@@ -96,10 +96,16 @@ export function InventoryScreen({
   })
 
   // Calculations for current form input
-  const numTrays = parseInt(trays) || 0
-  const totalEggs = numTrays * 30
+  const editingPurchase = editingId ? purchases.find((p) => p.id === editingId) : null
+  const numTrays = parseFloat(trays) || 0
+  const totalEggs =
+    editingPurchase &&
+    Number(editingPurchase.totalEggs) > 0 &&
+    Number(editingPurchase.trays) === numTrays
+      ? editingPurchase.totalEggs
+      : Math.round(numTrays * 30)
   const rate = parseFloat(ratePer100) || 0
-  const purchaseAmount = (totalEggs * rate) / 100
+  const purchaseAmount = Number(((totalEggs * rate) / 100).toFixed(2))
 
   const todayTotalCost = inventory.todayPurchaseCost
   const todayPurchasesCount = inventory.todayPurchasesCount

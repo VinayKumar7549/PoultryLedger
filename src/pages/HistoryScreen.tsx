@@ -64,7 +64,10 @@ export function HistoryScreen({
       const reportData = await pdfReportDataService.getDailySummaryReport(range)
       if (reportData) {
         if (filteredItems.length > 0) {
-          reportData.transactions = filteredItems.map(({ tx, customer }) => {
+          const saleItems = filteredItems.filter(
+            ({ tx }) => (tx.type || '').toLowerCase().trim() !== 'payment'
+          )
+          reportData.transactions = saleItems.map(({ tx, customer }) => {
             const trays = Number(tx.trays) || 0
             const totalEggs = Math.round(trays * 30)
             const billed = Number(tx.amountToBePaid) || 0
@@ -84,11 +87,11 @@ export function HistoryScreen({
               creditKept: Number(tx.creditKeptToday) || 0,
             }
           })
-          reportData.totalSales = filteredItems.reduce((sum, { tx }) => sum + (Number(tx.amountToBePaid) || 0), 0)
+          reportData.totalSales = saleItems.reduce((sum, { tx }) => sum + (Number(tx.amountToBePaid) || 0), 0)
           reportData.totalPayments = filteredItems.reduce((sum, { tx }) => sum + (Number(tx.amountPaid) || 0), 0)
-          reportData.totalTraysSold = filteredItems.reduce((sum, { tx }) => sum + (Number(tx.trays) || 0), 0)
-          reportData.totalEggsSold = Math.round(reportData.totalTraysSold * 30)
-          reportData.customersServedCount = new Set(filteredItems.map(({ customer }) => customer.name)).size
+          reportData.totalTraysSold = saleItems.reduce((sum, { tx }) => sum + (Number(tx.trays) || 0), 0)
+          reportData.totalEggsSold = saleItems.reduce((sum, { tx }) => sum + Math.round((Number(tx.trays) || 0) * 30), 0)
+          reportData.customersServedCount = new Set(saleItems.map(({ customer }) => customer.name)).size
         }
         const { generateDailySummaryPdf } = await import('../services/pdfGenerator')
         const res = await generateDailySummaryPdf(reportData)

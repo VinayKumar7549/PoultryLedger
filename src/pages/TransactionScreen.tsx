@@ -44,7 +44,7 @@ export function TransactionScreen({
   )
   const [ratePer100, setRatePer100] = useState(() => {
     if (!editingTx || !editingTx.trays || !editingTx.amountToBePaid) return ""
-    const eggs = editingTx.trays * 30
+    const eggs = Math.round(editingTx.trays * 30)
     return eggs > 0
       ? String(Number(((editingTx.amountToBePaid / eggs) * 100).toFixed(2)))
       : ""
@@ -72,7 +72,8 @@ export function TransactionScreen({
 
   const eggsCount = parseFloat(numEggs) || 0
   const rate = parseFloat(ratePer100) || 0
-  const calculatedAmount = parseFloat(totalAmount) || (eggsCount * rate) / 100
+  const calculatedAmount =
+    parseFloat(totalAmount) || Number(((eggsCount * rate) / 100).toFixed(2))
   const paid = parseFloat(amountPaid) || 0
 
   const handleEggsChange = (val: string) => {
@@ -133,10 +134,14 @@ export function TransactionScreen({
   }
 
   const creditKeptToday =
-    txType === "sale" ? Math.max(0, calculatedAmount - paid) : 0
+    txType === "sale"
+      ? Math.max(0, Number((calculatedAmount - paid).toFixed(2)))
+      : 0
   const creditReducedToday =
-    txType === "sale" ? Math.max(0, paid - calculatedAmount) : paid
-  const creditChange = creditReducedToday - creditKeptToday
+    txType === "sale"
+      ? Math.max(0, Number((paid - calculatedAmount).toFixed(2)))
+      : paid
+  const creditChange = Number((creditReducedToday - creditKeptToday).toFixed(2))
 
   // BUG-02: For edit mode, remove previous transaction's effect before applying new effect
   const prevEffect = editingTx
@@ -145,7 +150,7 @@ export function TransactionScreen({
     : 0
   const currentEffect = (txType === "sale" ? calculatedAmount : 0) - paid
   const baseOutstanding = customer.outstandingCredit - prevEffect
-  const newOutstanding = baseOutstanding + currentEffect
+  const newOutstanding = Number((baseOutstanding + currentEffect).toFixed(2))
 
   const isFormValid =
     txType === "sale" ? eggsCount > 0 && calculatedAmount > 0 : paid > 0

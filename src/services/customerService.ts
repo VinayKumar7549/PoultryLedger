@@ -1,7 +1,14 @@
 import { Customer } from "../types"
-import { customerRepository } from "../database"
+import { customerRepository, transactionRepository } from "../database"
 import { uid } from "../utils/date"
 import { transactionService } from "./transactionService"
+
+export interface DeleteCustomerResult {
+  success: boolean
+  error?: string
+  customers: Record<string, Customer>
+  routeCustomerMap: Record<string, string[]>
+}
 
 class CustomerService {
   async fetchCustomersAndRoutes(): Promise<{
@@ -147,12 +154,57 @@ class CustomerService {
     return await this.fetchCustomersAndRoutes()
   }
 
-  async deleteCustomer(id: string): Promise<{
-    customers: Record<string, Customer>
-    routeCustomerMap: Record<string, string[]>
-  }> {
-    await customerRepository.delete(id)
-    return await this.fetchCustomersAndRoutes()
+  async deleteCustomer(id: string): Promise<DeleteCustomerResult> {
+    try {
+      const customer = await customerRepository.getById(id)
+      if (!customer) {
+        const state = await this.fetchCustomersAndRoutes()
+        return {
+          success: false,
+          error: "Customer not found.",
+          ...state,
+        }
+      }
+
+      // 1. Transaction Check (sales, payments, credit records)
+      const txs = await transactionRepository.getByCustomerId(id)
+      if (txs.length > 0) {
+        const state = await this.fetchCustomersAndRoutes()
+        return {
+          success: false,
+          error: `Cannot delete customer "${customer.name}". This customer has ${txs.length} historical transaction(s) which must be preserved for accounting and inventory accuracy.`,
+          ...state,
+        }
+      }
+
+      // 2. Active Balance Check
+      const opening = Number(customer.opening_credit) || 0
+      const outstanding = Number(customer.outstanding_credit) || 0
+      if (opening !== 0 || outstanding !== 0) {
+        const state = await this.fetchCustomersAndRoutes()
+        return {
+          success: false,
+          error: `Cannot delete customer "${customer.name}". This customer has an active balance (Opening: ₹${opening}, Outstanding: ₹${outstanding}) that must be settled or cleared first.`,
+          ...state,
+        }
+      }
+
+      // 3. Safe to delete
+      await customerRepository.delete(id)
+      const state = await this.fetchCustomersAndRoutes()
+      return {
+        success: true,
+        ...state,
+      }
+    } catch (err: any) {
+      console.error("Error deleting customer:", err)
+      const state = await this.fetchCustomersAndRoutes()
+      return {
+        success: false,
+        error: err?.message || "Failed to delete customer due to a database error.",
+        ...state,
+      }
+    }
   }
 
   async saveRouteCustomers(routeId: string, customerIds: string[]): Promise<{

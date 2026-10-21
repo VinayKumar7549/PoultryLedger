@@ -27,7 +27,21 @@ export const fmtPdfCurrency = (n: number): string => {
 }
 
 export const fmtTrays = (n: number): string => {
-  if (n === undefined || n === null || isNaN(n) || n <= 0) return "0 trays"
-  const val = Number.isInteger(n) ? n : Math.round(n * 100) / 100
-  return `${val} ${val === 1 ? "tray" : "trays"}`
+  if (n === undefined || n === null || isNaN(n) || n === 0) return "0 trays"
+  const sign = n < 0 ? "-" : ""
+  const abs = Math.abs(n)
+  const val = Number.isInteger(abs) ? abs : Math.round(abs * 100) / 100
+  return `${sign}${val} ${val === 1 ? "tray" : "trays"}`
+}
+
+export function formatPaymentMethodText(method?: string, amountPaid?: number): string {
+  if (amountPaid !== undefined && amountPaid <= 0) {
+    return '-'
+  }
+  if (!method) return 'Cash'
+  const m = method.toLowerCase().trim()
+  if (m === 'cash') {
+    return 'Cash'
+  }
+  return 'Online'
 }

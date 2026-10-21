@@ -37,7 +37,9 @@ export async function getSQLiteInventoryMetrics(): Promise<InventoryMetrics> {
 
       let totalEggsSold = 0
       for (const t of txs) {
-        if (t.type === "payment") continue
+        const typeNorm = (t.type || "").toLowerCase().trim()
+        const isPayment = typeNorm === "payment" || (!typeNorm && Number(t.trays) === 0 && Number(t.amount_to_be_paid) === 0)
+        if (isPayment) continue
         totalEggsSold += Math.round((Number(t.trays) || 0) * 30)
       }
 
@@ -63,7 +65,10 @@ export async function getSQLiteInventoryMetrics(): Promise<InventoryMetrics> {
     const txRes = await dbInstance.query(
       `SELECT COALESCE(SUM(ROUND(trays * 30)), 0) AS total_eggs_sold 
        FROM transactions 
-       WHERE type != 'payment'`,
+       WHERE (CASE 
+         WHEN type IS NULL OR TRIM(type) = '' THEN (CASE WHEN trays > 0 OR amount_to_be_paid > 0 THEN 'sale' ELSE 'payment' END) 
+         ELSE LOWER(TRIM(type)) 
+       END) != 'payment'`,
     )
     const totalEggsSold = Number(txRes[0]?.total_eggs_sold) || 0
 

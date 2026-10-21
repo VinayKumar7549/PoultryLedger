@@ -440,7 +440,18 @@ class PdfReportDataService {
       const custTxs = txMap[c.id] || []
       custTxs.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
-      const outstanding = Number(c.outstanding_credit) || 0
+      const opening = Number(c.opening_credit) || 0
+      const calculatedOutstanding =
+        opening +
+        custTxs.reduce(
+          (sum, t) =>
+            sum + (Number(t.amount_to_be_paid) || 0) - (Number(t.amount_paid) || 0),
+          0,
+        )
+      const outstanding =
+        custTxs.length > 0 || opening !== 0
+          ? calculatedOutstanding
+          : Number(c.outstanding_credit) || 0
       if (outstanding <= 0) return
 
       totalOutstandingCredit += outstanding
@@ -563,6 +574,7 @@ class PdfReportDataService {
 
     let totalSales = 0
     let totalTraysSold = 0
+    let totalEggsSold = 0
     let totalPaid = 0
     let cashReceived = 0
     let gpayReceived = 0
@@ -585,6 +597,7 @@ class PdfReportDataService {
 
       totalSales += billed
       totalTraysSold += trays
+      totalEggsSold += totalEggs
       totalPaid += paid
       if (method === 'cash') cashReceived += paid
       else if (method === 'gpay' || method === 'online') gpayReceived += paid
@@ -632,7 +645,7 @@ class PdfReportDataService {
       routeFilterName: filterRouteName,
       totalSales,
       totalTraysSold,
-      totalEggsSold: Math.round(totalTraysSold * 30),
+      totalEggsSold,
       totalPaid,
       cashReceived,
       gpayReceived,
@@ -655,14 +668,18 @@ class PdfReportDataService {
     filteredPurchases.sort((a, b) => compareTimestampsAsc(a.date, a.time, b.date, b.time, a.created_at, b.created_at))
 
     const filteredTxs = transactions.filter(t => {
-      if (t.type === 'payment') return false
+      if ((t.type || '').toLowerCase().trim() === 'payment') return false
       const d = (t.date || '').trim().split('T')[0]
       return d >= dateRange.startDate && d <= dateRange.endDate
     })
 
     const totalPurchasesTrays = filteredPurchases.reduce((sum, p) => sum + (Number(p.trays) || 0), 0)
     const totalPurchasesEggs = filteredPurchases.reduce(
-      (sum, p) => sum + (Number(p.total_eggs) || Math.round((Number(p.trays) || 0) * 30)),
+      (sum, p) =>
+        sum +
+        (Number(p.total_eggs) > 0
+          ? Number(p.total_eggs)
+          : Math.round((Number(p.trays) || 0) * 30)),
       0
     )
     const totalPurchasesCost = filteredPurchases.reduce(
@@ -674,7 +691,7 @@ class PdfReportDataService {
       totalPurchasesEggs > 0 ? (totalPurchasesCost / totalPurchasesEggs) * 100 : 0
 
     const totalSalesTrays = filteredTxs.reduce((sum, t) => sum + (Number(t.trays) || 0), 0)
-    const totalSalesEggs = Math.round(totalSalesTrays * 30)
+    const totalSalesEggs = filteredTxs.reduce((sum, t) => sum + Math.round((Number(t.trays) || 0) * 30), 0)
     const totalSalesRevenue = filteredTxs.reduce(
       (sum, t) => sum + (Number(t.amount_to_be_paid) || 0),
       0
@@ -709,7 +726,10 @@ class PdfReportDataService {
       time: p.time || '',
       eggType: p.egg_type === 'damaged' ? 'Damaged / Waste' : 'Normal Stock',
       trays: Number(p.trays) || 0,
-      totalEggs: Number(p.total_eggs) || Math.round((Number(p.trays) || 0) * 30),
+      totalEggs:
+        Number(p.total_eggs) > 0
+          ? Number(p.total_eggs)
+          : Math.round((Number(p.trays) || 0) * 30),
       ratePer100: Number(p.rate_per_100) || 0,
       totalAmount: Number(p.total_amount) || 0,
     }))
@@ -741,13 +761,30 @@ class PdfReportDataService {
     const allPurchases = await purchaseRepository.getAll()
     const allTxs = await transactionRepository.getAll()
 
-    // Remaining inventory calculation across all historical records
-    const allPurchasedEggs = allPurchases.reduce(
-      (sum, p) => sum + (Number(p.total_eggs) || Math.round((Number(p.trays) || 0) * 30)),
+    // Closing inventory calculation up to the requested dateRange.endDate
+    const closingPurchases = allPurchases.filter(p => {
+      const d = (p.date || '').trim().split('T')[0]
+      return !dateRange.endDate || d <= dateRange.endDate
+    })
+    const closingTxs = allTxs.filter(t => {
+      const d = (t.date || '').trim().split('T')[0]
+      return !dateRange.endDate || d <= dateRange.endDate
+    })
+
+    const allPurchasedEggs = closingPurchases.reduce(
+      (sum, p) =>
+        sum +
+        (Number(p.total_eggs) > 0
+          ? Number(p.total_eggs)
+          : Math.round((Number(p.trays) || 0) * 30)),
       0
     )
-    const allSoldEggs = allTxs.reduce(
-      (sum, t) => sum + (t.type === 'payment' ? 0 : Math.round((Number(t.trays) || 0) * 30)),
+    const allSoldEggs = closingTxs.reduce(
+      (sum, t) =>
+        sum +
+        ((t.type || '').toLowerCase().trim() === 'payment'
+          ? 0
+          : Math.round((Number(t.trays) || 0) * 30)),
       0
     )
     const remainingInventoryEggs = allPurchasedEggs - allSoldEggs

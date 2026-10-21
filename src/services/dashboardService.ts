@@ -59,7 +59,13 @@ class DashboardService {
         let totalTransactions = 0
 
         for (const t of txs) {
-          if (t.type === "payment") continue
+          const typeNorm = (t.type || "").toLowerCase().trim()
+          const isPayment =
+            typeNorm === "payment" ||
+            (!typeNorm &&
+              Number(t.trays) === 0 &&
+              Number(t.amount_to_be_paid) === 0)
+          if (isPayment) continue
           totalTransactions++
           const amt = Number(t.amount_to_be_paid) || 0
           const cred = Number(t.credit_kept_today) || 0
@@ -85,9 +91,10 @@ class DashboardService {
         for (const p of purchases) {
           const cost = Number(p.total_amount) || 0
           const trays = Number(p.trays) || 0
+          const eggs = Number(p.total_eggs) || 0
           totalPurchaseCost += cost
           totalTraysPurchased += trays
-          totalEggsPurchased += trays * 30
+          totalEggsPurchased += eggs > 0 ? eggs : Math.round(trays * 30)
 
           const pDate = (p.date || "").trim().split("T")[0]
           if (pDate === todayStr) {
@@ -165,7 +172,10 @@ class DashboardService {
           COALESCE(SUM(ROUND(trays * 30)), 0) AS total_eggs_sold,
           COUNT(*) AS total_transactions
          FROM transactions
-         WHERE type != 'payment'`,
+         WHERE (CASE 
+           WHEN type IS NULL OR TRIM(type) = '' THEN (CASE WHEN trays > 0 OR amount_to_be_paid > 0 THEN 'sale' ELSE 'payment' END) 
+           ELSE LOWER(TRIM(type)) 
+         END) != 'payment'`,
         [
           todayStr,
           todayLike,
